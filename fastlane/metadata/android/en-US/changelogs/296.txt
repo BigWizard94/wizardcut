@@ -1,0 +1,3 @@
+- Added a translated Spanish Play listing with a current changelog, replaced synthetic listing screenshots with API 37 device captures, and repaired the clean-checkout changelog/checksum release scripts.
+- Migrated project persistence to Room 3.0.1 and SQLite driver APIs; the v1 to v10 migration chain remains device-validated on API 37.
+- Updated Coil Compose and its video-frame decoder from 3.3.0 to 3.5.0 after the unit-test, lint, and QA packaging compatibility probe passed; the timeline a...

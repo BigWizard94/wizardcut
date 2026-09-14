@@ -1,0 +1,1958 @@
+package com.novacut.editor.ui.editor
+
+import com.novacut.editor.ui.theme.ClearCutAccents
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.RotateRight
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
+import com.novacut.editor.R
+import com.novacut.editor.model.*
+import com.novacut.editor.ui.ClearCutTestTags
+import com.novacut.editor.ui.theme.LocalClearCutColors
+import com.novacut.editor.ui.theme.Radius
+import com.novacut.editor.ui.theme.TouchTarget
+import java.util.Locale
+
+// --- Tab & sub-menu data ---
+
+data class TabItem(val id: String, val icon: ImageVector, @StringRes val labelRes: Int)
+data class SubMenuItem(val id: String, val icon: ImageVector, @StringRes val labelRes: Int)
+
+internal val genericAddableEffectTypes: List<EffectType> = EffectType.entries.filterNot {
+    it in setOf(
+        EffectType.TRACKED_MOSAIC,
+        EffectType.BG_REMOVAL,
+        EffectType.SPEED,
+        EffectType.REVERSE
+    )
+}
+
+// Project mode tabs (no clip selected)
+val projectTabs = listOf(
+    TabItem("edit", Icons.Default.Edit, R.string.tool_tab_edit),
+    TabItem("audio", Icons.Default.MusicNote, R.string.tool_tab_audio),
+    TabItem("text", Icons.Default.Title, R.string.tool_tab_text),
+    TabItem("effects", Icons.Default.AutoFixHigh, R.string.tool_tab_effects),
+    TabItem("aspect", Icons.Default.AspectRatio, R.string.tool_tab_aspect),
+    TabItem("project_tools", Icons.Default.GridView, R.string.editor_more)
+)
+
+// Clip mode tabs (clip selected)
+val clipTabs = listOf(
+    TabItem("edit", Icons.Default.Edit, R.string.tool_tab_edit),
+    TabItem("audio", Icons.Default.MusicNote, R.string.tool_tab_audio),
+    TabItem("text", Icons.Default.Title, R.string.tool_tab_text),
+    TabItem("color", Icons.Default.Palette, R.string.tool_tab_color),
+    TabItem("effects", Icons.Default.AutoFixHigh, R.string.tool_tab_fx),
+    TabItem("more", Icons.Default.GridView, R.string.editor_more)
+)
+
+// Project mode — Text tab sub-menu
+private val textSubMenu = listOf(
+    SubMenuItem("add_text", Icons.Default.Title, R.string.tool_add_text),
+    SubMenuItem("text_templates", Icons.Default.Dashboard, R.string.tool_text_templates),
+    SubMenuItem("captions", Icons.Default.ClosedCaption, R.string.tool_captions),
+    SubMenuItem("caption_styles", Icons.Default.Subtitles, R.string.tool_caption_styles),
+    SubMenuItem("stickers", Icons.Default.EmojiEmotions, R.string.tool_stickers),
+    SubMenuItem("tts", Icons.Default.RecordVoiceOver, R.string.tool_text_to_speech)
+)
+
+// Clip mode — Edit tab sub-menu
+private val clipEditSubMenu = listOf(
+    SubMenuItem("split", Icons.AutoMirrored.Filled.CallSplit, R.string.tool_split),
+    SubMenuItem("trim", Icons.Default.ContentCut, R.string.tool_trim),
+    SubMenuItem("merge", Icons.Default.Compress, R.string.tool_merge_next),
+    SubMenuItem("duplicate", Icons.Default.ContentCopy, R.string.tool_duplicate),
+    SubMenuItem("freeze", Icons.Default.AcUnit, R.string.tool_freeze_frame),
+    SubMenuItem("copy_fx", Icons.Default.FileCopy, R.string.tool_copy_effects),
+    SubMenuItem("paste_fx", Icons.Default.ContentPaste, R.string.tool_paste_effects),
+    SubMenuItem("effect_library", Icons.Default.CollectionsBookmark, R.string.effect_library_title),
+    SubMenuItem("unlink_av", Icons.Default.LinkOff, R.string.tool_unlink_av),
+    SubMenuItem("compound", Icons.Default.ViewModule, R.string.tool_compound_clip),
+    SubMenuItem("speed_presets", Icons.Default.Speed, R.string.tool_speed_presets),
+    SubMenuItem("group", Icons.Default.GroupWork, R.string.tool_group),
+    SubMenuItem("ungroup", Icons.Default.Workspaces, R.string.tool_ungroup),
+    SubMenuItem("draw", Icons.Default.Draw, R.string.tool_draw),
+    @Suppress("DEPRECATION")
+    SubMenuItem("label", Icons.Default.Label, R.string.tool_color_label),
+    @Suppress("DEPRECATION")
+    SubMenuItem("transcript_edit", Icons.Default.Subject, R.string.v369_text_edit_title)
+)
+
+// Clip mode — Motion tab sub-menu (replaces simple Transform panel)
+private val clipMotionSubMenu = listOf(
+    SubMenuItem("transform", Icons.Default.Transform, R.string.tool_submenu_transform),
+    SubMenuItem("keyframes", Icons.Default.Timeline, R.string.tool_keyframes),
+    SubMenuItem("pip", Icons.Default.PictureInPicture, R.string.tool_pip),
+    SubMenuItem("chroma_key", Icons.Default.Deblur, R.string.tool_chroma_key)
+)
+
+private val projectTextSubMenu = textSubMenu.filterNot { it.id == "captions" }
+
+// Secondary clip workflows live behind one deliberate More workbench so the
+// persistent rail stays stable and scannable at six categories.
+private val clipMoreSubMenu = listOf(
+    SubMenuItem("back", Icons.AutoMirrored.Filled.ArrowBack, R.string.back),
+    SubMenuItem("speed", Icons.Default.Speed, R.string.tool_tab_speed),
+    SubMenuItem("transform", Icons.Default.Transform, R.string.tool_submenu_transform),
+    SubMenuItem("keyframes", Icons.Default.Timeline, R.string.tool_keyframes),
+    SubMenuItem("pip", Icons.Default.PictureInPicture, R.string.tool_pip),
+    SubMenuItem("chroma_key", Icons.Default.Deblur, R.string.tool_chroma_key),
+    SubMenuItem("transition", Icons.Default.SwapHoriz, R.string.tool_transitions),
+    SubMenuItem("aspect", Icons.Default.AspectRatio, R.string.tool_tab_aspect),
+    SubMenuItem("ai_hub", Icons.Default.AutoAwesome, R.string.tool_ai_hub),
+    SubMenuItem("command_palette", Icons.Default.Search, R.string.tool_search),
+)
+
+internal fun visibleClipTabs(editorMode: EditorMode): List<TabItem> =
+    if (editorMode == EditorMode.EASY) {
+        clipTabs.filter { it.id in setOf("edit", "audio", "text", "effects", "more") }
+    } else {
+        clipTabs
+    }
+
+internal fun projectTextActionIds(): Set<String> = projectTextSubMenu.mapTo(mutableSetOf()) { it.id }
+
+internal fun clipMoreActionIds(): Set<String> = clipMoreSubMenu.mapTo(mutableSetOf()) { it.id }
+
+// Clip mode — AI Magic tab sub-menu (expanded)
+private val clipAiSubMenu = listOf(
+    SubMenuItem("ai_hub", Icons.Default.AutoAwesome, R.string.tool_ai_hub),
+    SubMenuItem("cut_assistant", Icons.Default.ContentCut, R.string.tool_cut_assistant),
+    SubMenuItem("scene_detect", Icons.Default.ContentCut, R.string.tool_scene_detect),
+    SubMenuItem("remove_bg", Icons.Default.Wallpaper, R.string.tool_remove_bg),
+    SubMenuItem("bg_replace", Icons.Default.PhotoFilter, R.string.tool_replace_bg),
+    SubMenuItem("track_motion", Icons.Default.GpsFixed, R.string.tool_track_motion),
+    SubMenuItem("face_track", Icons.Default.Face, R.string.tool_face_track),
+    SubMenuItem("smart_crop", Icons.Default.Crop, R.string.tool_smart_crop),
+    SubMenuItem("smart_reframe", Icons.Default.CropRotate, R.string.tool_smart_reframe),
+    SubMenuItem("stabilize", Icons.Default.Straighten, R.string.tool_stabilize),
+    SubMenuItem("denoise", Icons.AutoMirrored.Filled.VolumeOff, R.string.tool_denoise),
+    SubMenuItem("auto_captions", Icons.Default.ClosedCaption, R.string.tool_auto_captions),
+    SubMenuItem("auto_color", Icons.Default.Palette, R.string.tool_auto_color),
+    SubMenuItem("style_transfer", Icons.Default.Style, R.string.tool_style_transfer),
+    SubMenuItem("object_remove", Icons.Default.HideImage, R.string.tool_object_remove),
+    SubMenuItem("upscale", Icons.Default.ZoomIn, R.string.tool_upscale_4k),
+    SubMenuItem("frame_interp", Icons.Default.SlowMotionVideo, R.string.tool_frame_interp),
+    SubMenuItem("video_upscale", Icons.Default.ZoomIn, R.string.tool_ai_upscale),
+    SubMenuItem("ai_background", Icons.Default.PhotoFilter, R.string.tool_ai_background),
+    SubMenuItem("ai_stabilize", Icons.Default.Straighten, R.string.tool_ai_stabilize),
+    SubMenuItem("ai_style_transfer", Icons.Default.Style, R.string.tool_ai_style),
+    SubMenuItem("filler_removal", Icons.Default.ContentCut, R.string.tool_remove_fillers),
+    SubMenuItem("noise_reduction", Icons.Default.GraphicEq, R.string.tool_reduce_noise)
+)
+
+// Project mode — Tools tab sub-menu
+private val projectToolsSubMenu = listOf(
+    SubMenuItem("audio_mixer", Icons.Default.Equalizer, R.string.tool_audio_mixer),
+    SubMenuItem("beat_detect", Icons.Default.GraphicEq, R.string.tool_beat_detect),
+    SubMenuItem("auto_duck", Icons.Default.RecordVoiceOver, R.string.tool_auto_duck),
+    SubMenuItem("adjustment_layer", Icons.Default.Tune, R.string.tool_adj_layer),
+    SubMenuItem("scopes", Icons.Default.Insights, R.string.tool_video_scopes),
+    SubMenuItem("chapters", Icons.Default.Bookmarks, R.string.tool_chapters),
+    SubMenuItem("snapshot", Icons.Default.Save, R.string.tool_snapshot),
+    SubMenuItem("history", Icons.Default.History, R.string.tool_version_history),
+    SubMenuItem("export_srt", Icons.Default.Subtitles, R.string.tool_export_srt),
+    SubMenuItem("media_manager", Icons.Default.FolderOpen, R.string.tool_media_manager),
+    SubMenuItem("render_preview", Icons.Default.Preview, R.string.tool_render_analysis),
+    SubMenuItem("cloud_backup", Icons.Default.ImportExport, R.string.tool_cloud_backup),
+    SubMenuItem("archive", Icons.Default.Archive, R.string.tool_project_archive),
+    SubMenuItem("batch_export", Icons.Default.DynamicFeed, R.string.tool_batch_export),
+    SubMenuItem("proxy_toggle", Icons.Default.Speed, R.string.tool_proxy_edit),
+    SubMenuItem("beat_sync", Icons.Default.MusicNote, R.string.tool_beat_sync),
+    SubMenuItem("auto_edit", Icons.Default.AutoFixHigh, R.string.tool_auto_edit),
+    SubMenuItem("storyboard", Icons.AutoMirrored.Filled.ViewList, R.string.tool_storyboard),
+    SubMenuItem("multi_cam", Icons.Default.Videocam, R.string.tool_multi_cam),
+    SubMenuItem("marker_list", Icons.Default.BookmarkBorder, R.string.tool_marker_list),
+    SubMenuItem("project_inspector", Icons.Default.Info, R.string.tool_project_inspector)
+)
+
+// --- Bottom tool area (tab bar + contextual sub-menu grids) ---
+
+@Composable
+fun BottomToolArea(
+    selectedClipId: String?,
+    hasCopiedEffects: Boolean,
+    modifier: Modifier = Modifier,
+    textOverlays: List<TextOverlay> = emptyList(),
+    onExpandedChange: (Boolean) -> Unit = {},
+    onAction: (String) -> Unit,
+    onEditTextOverlay: (String) -> Unit = {},
+    onDeleteTextOverlay: (String) -> Unit = {},
+    editorMode: EditorMode = EditorMode.PRO,
+    compactLocked: Boolean = false
+) {
+    val isClipMode = selectedClipId != null
+
+    val visibleProjectTabs = if (editorMode == EditorMode.EASY) {
+        projectTabs.filter { it.id in setOf("edit", "audio", "text", "effects") }
+    } else projectTabs
+
+    val visibleClipTabs = visibleClipTabs(editorMode)
+
+    val tabs = if (isClipMode) visibleClipTabs else visibleProjectTabs
+    var activeTabId by remember { mutableStateOf<String?>(null) }
+
+    // Reset active tab when switching between project/clip mode
+    LaunchedEffect(isClipMode, compactLocked) {
+        activeTabId = null
+    }
+
+    // Resolve sub-menu for the currently active tab
+    val subMenuItems: List<SubMenuItem>? = when {
+        compactLocked -> null
+        !isClipMode && activeTabId == "text" -> projectTextSubMenu
+        !isClipMode && activeTabId == "project_tools" -> projectToolsSubMenu
+        isClipMode && activeTabId == "edit" -> clipEditSubMenu
+        isClipMode && activeTabId == "text" -> textSubMenu
+        isClipMode && activeTabId == "transform" -> clipMotionSubMenu
+        isClipMode && activeTabId == "ai" -> clipAiSubMenu
+        isClipMode && activeTabId == "more" -> clipMoreSubMenu
+        else -> null
+    }
+
+    LaunchedEffect(subMenuItems != null, compactLocked) {
+        onExpandedChange(!compactLocked && subMenuItems != null)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = if (compactLocked || subMenuItems == null) 64.dp else 126.dp)
+    ) {
+        // Sub-menu grid (slides up above tab bar)
+        if (!compactLocked) {
+            AnimatedVisibility(
+                visible = subMenuItems != null,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                subMenuItems?.let { items ->
+                    Column {
+                        SubMenuGrid(
+                            items = items,
+                            onItemSelected = { itemId ->
+                                onAction(itemId)
+                                activeTabId = null
+                            },
+                            disabledIds = buildSet {
+                                if (!hasCopiedEffects) add("paste_fx")
+                                if (!isClipMode) {
+                                    add("color_grade"); add("keyframes"); add("masks"); add("blend_mode")
+                                }
+                            }
+                        )
+                        // Text overlay list when text tab active
+                        if (!isClipMode && activeTabId == "text" && textOverlays.isNotEmpty()) {
+                            TextOverlayList(
+                                overlays = textOverlays,
+                                onEdit = onEditTextOverlay,
+                                onDelete = onDeleteTextOverlay
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Tab bar
+        BottomTabBar(
+            tabs = tabs,
+            activeTabId = activeTabId ?: "edit",
+            onTabTapped = { tabId ->
+                when (tabId) {
+                    "back" -> {
+                        activeTabId = null
+                        onAction("back")
+                    }
+                    "edit" -> {
+                        if (isClipMode) {
+                            activeTabId = if (activeTabId == "edit") null else "edit"
+                        } else {
+                            activeTabId = null
+                            onAction("edit")
+                        }
+                    }
+                    "audio" -> {
+                        activeTabId = null
+                        onAction(if (isClipMode) "audio_tool" else "audio_add")
+                    }
+                    "text" -> {
+                        activeTabId = if (activeTabId == "text") null else "text"
+                    }
+                    "speed" -> {
+                        activeTabId = null
+                        onAction("speed")
+                    }
+                    "transform" -> {
+                        // Clip mode: show Motion sub-menu (Transform, Keyframes, Masks, Blend, PiP, Chroma)
+                        if (isClipMode) {
+                            activeTabId = if (activeTabId == "transform") null else "transform"
+                        } else {
+                            activeTabId = null
+                            onAction("transform")
+                        }
+                    }
+                    "effects" -> {
+                        activeTabId = null
+                        onAction(if (isClipMode) "effects" else "effects_disabled")
+                    }
+                    "transition" -> {
+                        activeTabId = null
+                        onAction("transition")
+                    }
+                    "color" -> {
+                        activeTabId = null
+                        onAction("color_grade")
+                    }
+                    "ai" -> {
+                        activeTabId = if (activeTabId == "ai") null else "ai"
+                    }
+                    "aspect" -> {
+                        activeTabId = null
+                        onAction("aspect")
+                    }
+                    "project_tools" -> {
+                        // Project mode: show Tools sub-menu (Audio Mixer, Beat Detect, etc.)
+                        activeTabId = if (activeTabId == "project_tools") null else "project_tools"
+                    }
+                    "more" -> {
+                        activeTabId = if (activeTabId == "more") null else "more"
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun BottomTabBar(
+    tabs: List<TabItem>,
+    activeTabId: String?,
+    onTabTapped: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    val colors = LocalClearCutColors.current
+    Surface(
+        color = colors.background,
+        shape = RoundedCornerShape(topStart = Radius.sm, topEnd = Radius.sm),
+        border = BorderStroke(1.dp, colors.cardStroke.copy(alpha = 0.72f)),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 3.dp)
+        ) {
+            val fitAllTabs = tabs.size <= 6
+            val compactItem = maxWidth < 390.dp
+
+            if (fitAllTabs) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    tabs.forEach { tab ->
+                        BottomTabBarItem(
+                            tab = tab,
+                            isActive = activeTabId == tab.id,
+                            compact = compactItem,
+                            onClick = { onTabTapped(tab.id) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            } else {
+                val listState = rememberLazyListState()
+                val tabWidth = if (compactItem) 60.dp else 68.dp
+                val canScrollBackward by remember {
+                    derivedStateOf {
+                        listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+                    }
+                }
+                val canScrollForward by remember {
+                    derivedStateOf {
+                        val layoutInfo = listState.layoutInfo
+                        val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        lastVisibleItem < layoutInfo.totalItemsCount - 1
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    LazyRow(
+                        state = listState,
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        contentPadding = PaddingValues(start = 4.dp, end = 18.dp)
+                    ) {
+                        items(tabs, key = { it.id }) { tab ->
+                            BottomTabBarItem(
+                                tab = tab,
+                                isActive = activeTabId == tab.id,
+                                compact = compactItem,
+                                onClick = { onTabTapped(tab.id) },
+                                modifier = Modifier.width(tabWidth)
+                            )
+                        }
+                    }
+
+                    if (canScrollBackward) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(18.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(semanticColors.panel, semanticColors.panel.copy(alpha = 0f))
+                                    )
+                                )
+                        )
+                    }
+
+                    if (canScrollForward) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .fillMaxHeight()
+                                .width(18.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(semanticColors.panel.copy(alpha = 0f), semanticColors.panel)
+                                    )
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BottomTabBarItem(
+    tab: TabItem,
+    isActive: Boolean,
+    compact: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    val colors = LocalClearCutColors.current
+    val isBack = tab.id == "back"
+    val tabLabel = if (tab.labelRes != 0) stringResource(tab.labelRes) else ""
+    val itemDescription = if (isBack) stringResource(R.string.back) else tabLabel
+    val itemShape = RoundedCornerShape(Radius.xs)
+    val iconSize = if (compact) 19.dp else 20.dp
+    val labelSlotHeight = 15.dp
+    val itemHeight = if (compact) 50.dp else 54.dp
+    val itemBorderColor by animateColorAsState(
+        targetValue = when {
+            isBack -> semanticColors.cardStroke.copy(alpha = 0.38f)
+            else -> Color.Transparent
+        },
+        label = "toolTabItemBorder"
+    )
+    val itemContainerColor by animateColorAsState(
+        targetValue = when {
+            isBack -> semanticColors.panelRaised.copy(alpha = 0.42f)
+            else -> Color.Transparent
+        },
+        label = "toolTabItemContainer"
+    )
+    val iconTint by animateColorAsState(
+        targetValue = when {
+            isActive && !isBack -> colors.accent
+            isBack -> semanticColors.text
+            else -> semanticColors.subtext
+        },
+        label = "toolTabIconTint"
+    )
+    val labelColor by animateColorAsState(
+        targetValue = if (isActive && !isBack) colors.accent else semanticColors.subtext,
+        label = "toolTabLabelColor"
+    )
+
+    Column(
+        modifier = modifier
+            .clip(itemShape)
+            .selectable(
+                selected = isActive,
+                onClick = onClick,
+                role = Role.Tab
+            )
+            .testTag(ClearCutTestTags.EDITOR_TOOL_TAB_PREFIX + tab.id)
+            .semantics { contentDescription = itemDescription }
+            .defaultMinSize(minWidth = TouchTarget.minimum)
+            .height(itemHeight)
+            .background(itemContainerColor)
+            .border(BorderStroke(1.dp, itemBorderColor), itemShape)
+            .padding(vertical = 2.dp, horizontal = 3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .width(30.dp)
+                .height(2.dp)
+                .background(if (isActive && !isBack) colors.accent else Color.Transparent)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Box(
+            modifier = Modifier
+                .height(21.dp)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                tab.icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(1.dp))
+        Box(
+            modifier = Modifier.height(labelSlotHeight),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            if (tabLabel.isNotEmpty()) {
+                Text(
+                    text = tabLabel,
+                    fontSize = if (compact) 10.sp else 11.sp,
+                    color = labelColor,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    lineHeight = if (compact) 11.sp else 12.sp,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubMenuGrid(
+    items: List<SubMenuItem>,
+    onItemSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    disabledIds: Set<String> = emptySet()
+) {
+    val semanticColors = LocalClearCutColors.current
+    Surface(
+        color = semanticColors.panel,
+        shape = RoundedCornerShape(topStart = Radius.sm, topEnd = Radius.sm),
+        border = BorderStroke(1.dp, semanticColors.cardStroke.copy(alpha = 0.72f)),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        LazyRow(
+            modifier = Modifier
+                .testTag(ClearCutTestTags.EDITOR_TOOL_ACTION_LIST)
+                .height(62.dp),
+            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(items, key = { it.id }) { item ->
+                val isDisabled = item.id in disabledIds
+                val itemLabel = stringResource(item.labelRes)
+                val itemAccent = if (isDisabled) semanticColors.overlay else LocalClearCutColors.current.accent
+                Column(
+                    modifier = Modifier
+                        .width(72.dp)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(Radius.xs))
+                        .clickable(enabled = !isDisabled) { onItemSelected(item.id) }
+                        .testTag(ClearCutTestTags.EDITOR_TOOL_ACTION_PREFIX + item.id)
+                        .semantics {
+                            contentDescription = itemLabel
+                            if (isDisabled) disabled()
+                        }
+                        .background(if (isDisabled) Color.Transparent else itemAccent.copy(alpha = 0.08f))
+                        .alpha(if (isDisabled) 0.42f else 1f)
+                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        item.icon,
+                        contentDescription = null,
+                        tint = if (isDisabled) semanticColors.subtext else itemAccent,
+                        modifier = Modifier.size(19.dp)
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = itemLabel,
+                        fontSize = 10.sp,
+                        color = semanticColors.subtext,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        lineHeight = 11.sp,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EffectsPanel(
+    selectedClip: Clip?,
+    trackedObjects: List<TrackedObject> = emptyList(),
+    onAddEffect: (EffectType) -> Unit,
+    onAddTrackedMosaic: (TrackedObject) -> Unit = {},
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    var selectedCategory by remember { mutableStateOf(EffectCategory.COLOR) }
+    val accent = effectAccent(selectedCategory)
+    val effects = remember(selectedCategory) {
+        genericAddableEffectTypes.filter { it.category == selectedCategory }
+    }
+    val clipTrackedObjects = remember(selectedClip?.id, trackedObjects) {
+        selectedClip?.let { clip ->
+            trackedObjects.filter {
+                it.sourceClipId == clip.id && it.isEnabled && it.keyframes.isNotEmpty()
+            }
+        } ?: emptyList()
+    }
+
+    PremiumEditorPanel(
+        title = stringResource(R.string.tool_effects),
+        subtitle = stringResource(R.string.panel_effects_subtitle),
+        icon = Icons.Default.AutoFixHigh,
+        accent = accent,
+        onClose = onClose,
+        modifier = modifier.heightIn(max = 360.dp)
+    ) {
+        PremiumPanelCard(accent = accent) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PremiumPanelPill(
+                    text = stringResource(R.string.panel_effects_available_count, effects.size),
+                    accent = ClearCutAccents.Sapphire
+                )
+                if (selectedClip != null) {
+                    PremiumPanelPill(
+                        text = stringResource(R.string.panel_effects_applied_count, selectedClip.effects.size),
+                        accent = accent
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.panel_effects_categories),
+                color = ClearCutAccents.Rosewater,
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                EffectCategory.entries
+                    .filter { category -> genericAddableEffectTypes.any { it.category == category } }
+                    .forEach { category ->
+                    val isSelected = selectedCategory == category
+                    val categoryAccent = effectAccent(category)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCategory = category },
+                        label = {
+                            Text(
+                                text = category.displayName,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = semanticColors.panel,
+                            labelColor = semanticColors.subtext,
+                            selectedContainerColor = categoryAccent.copy(alpha = 0.18f),
+                            selectedLabelColor = categoryAccent
+                        )
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (clipTrackedObjects.isNotEmpty()) {
+            PremiumPanelCard(accent = ClearCutAccents.Sky) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.GpsFixed,
+                            contentDescription = null,
+                            tint = ClearCutAccents.Sky,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.tool_tracked_masks),
+                            color = semanticColors.text,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                    PremiumPanelPill(
+                        text = clipTrackedObjects.size.toString(),
+                        accent = ClearCutAccents.Sky
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    clipTrackedObjects.forEach { trackedObject ->
+                        val isApplied = selectedClip?.effects?.any {
+                            it.type == EffectType.TRACKED_MOSAIC &&
+                                it.targetTrackedObjectId == trackedObject.id
+                        } == true
+                        FilterChip(
+                            selected = isApplied,
+                            onClick = {
+                                if (!isApplied) onAddTrackedMosaic(trackedObject)
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.GridOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.tool_tracked_mosaic_format, trackedObject.label),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = semanticColors.panel,
+                                labelColor = semanticColors.subtext,
+                                iconColor = semanticColors.subtext,
+                                selectedContainerColor = ClearCutAccents.Sky.copy(alpha = 0.18f),
+                                selectedLabelColor = ClearCutAccents.Sky,
+                                selectedLeadingIconColor = ClearCutAccents.Sky
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            items(effects) { effectType ->
+                val isApplied = selectedClip?.effects?.any { it.type == effectType } == true
+                Surface(
+                    modifier = Modifier.width(112.dp),
+                    onClick = { onAddEffect(effectType) },
+                    color = semanticColors.panelHighest,
+                    shape = RoundedCornerShape(Radius.xl),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (isApplied) accent.copy(alpha = 0.34f) else semanticColors.cardStroke
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(
+                                if (isApplied) accent.copy(alpha = 0.08f) else Color.Transparent
+                            )
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(Radius.xl))
+                                .background(
+                                    if (isApplied) accent.copy(alpha = 0.18f)
+                                    else semanticColors.panel
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = effectIcon(selectedCategory),
+                                contentDescription = effectType.displayName,
+                                tint = if (isApplied) accent else semanticColors.subtext,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = effectType.displayName,
+                                color = semanticColors.text,
+                                style = MaterialTheme.typography.titleSmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = selectedCategory.displayName,
+                                color = semanticColors.subtext,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        if (isApplied) {
+                            PremiumPanelPill(
+                                text = stringResource(R.string.tool_applied),
+                                accent = ClearCutAccents.Green
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EffectAdjustmentPanel(
+    effect: Effect,
+    onUpdateParams: (Map<String, Float>) -> Unit,
+    modifier: Modifier = Modifier,
+    onEffectDragStarted: () -> Unit = {},
+    onEffectDragEnded: () -> Unit = {},
+    onToggleEnabled: () -> Unit = {},
+    onRemove: () -> Unit,
+    onClose: () -> Unit
+) {
+    val semanticColors = LocalClearCutColors.current
+    val accent = effectAccent(effect.type.category)
+
+    PremiumEditorPanel(
+        title = effect.type.displayName,
+        subtitle = stringResource(R.string.panel_effect_adjust_subtitle),
+        icon = effectIcon(effect.type.category),
+        accent = accent,
+        onClose = onClose,
+        modifier = modifier,
+        headerActions = {
+            PremiumPanelIconButton(
+                icon = if (effect.enabled) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                contentDescription = if (effect.enabled) stringResource(R.string.tool_disable) else stringResource(R.string.tool_enable),
+                tint = if (effect.enabled) ClearCutAccents.Green else semanticColors.subtext,
+                onClick = onToggleEnabled
+            )
+            PremiumPanelIconButton(
+                icon = Icons.Default.Delete,
+                contentDescription = stringResource(R.string.tool_remove),
+                tint = ClearCutAccents.Red,
+                onClick = onRemove
+            )
+        }
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PremiumPanelPill(
+                text = if (effect.enabled) {
+                    stringResource(R.string.panel_effect_status_enabled)
+                } else {
+                    stringResource(R.string.panel_effect_status_disabled)
+                },
+                accent = if (effect.enabled) ClearCutAccents.Green else semanticColors.subtext
+            )
+            PremiumPanelPill(
+                text = effect.type.category.displayName,
+                accent = accent
+            )
+        }
+
+        PremiumPanelCard(accent = accent) {
+            val ranges = EffectType.paramRangesForType(effect.type)
+            val defaults = EffectType.defaultParams(effect.type)
+            val ds = onEffectDragStarted
+            val de = onEffectDragEnded
+            for ((key, range) in ranges) {
+                val currentValue = effect.params[key] ?: defaults[key] ?: 0f
+                EffectSlider(range.label, currentValue, range.min, range.max, ds, de) {
+                    onUpdateParams(effect.params + (key to it))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EffectSlider(
+    label: String,
+    value: Float,
+    min: Float,
+    max: Float,
+    onDragStarted: () -> Unit = {},
+    onDragEnded: () -> Unit = {},
+    onValueChange: (Float) -> Unit
+) {
+    val semanticColors = LocalClearCutColors.current
+    var isDragging by remember { mutableStateOf(false) }
+    val rawMin = if (min.isFinite()) min else 0f
+    val rawMax = if (max.isFinite()) max else rawMin + 1f
+    val rangeStart = minOf(rawMin, rawMax)
+    val rangeEnd = maxOf(rawMin, rawMax).let { if (it > rangeStart) it else rangeStart + 1f }
+    val safeValue = if (value.isFinite()) value.coerceIn(rangeStart, rangeEnd) else rangeStart
+    Surface(
+        color = semanticColors.panelHighest.copy(alpha = 0.92f),
+        shape = RoundedCornerShape(Radius.md),
+        border = BorderStroke(1.dp, semanticColors.cardStroke),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = label,
+                    color = semanticColors.subtextStrong,
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Text(
+                    text = formatEffectValue(safeValue, rangeStart, rangeEnd),
+                    color = ClearCutAccents.Rosewater,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Slider(
+                value = safeValue,
+                onValueChange = {
+                    if (!isDragging) {
+                        isDragging = true
+                        onDragStarted()
+                    }
+                    onValueChange(if (it.isFinite()) it.coerceIn(rangeStart, rangeEnd) else safeValue)
+                },
+                onValueChangeFinished = { isDragging = false; onDragEnded() },
+                valueRange = rangeStart..rangeEnd,
+                colors = SliderDefaults.colors(
+                    thumbColor = ClearCutAccents.Rosewater,
+                    activeTrackColor = ClearCutAccents.Mauve,
+                    inactiveTrackColor = semanticColors.surface
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun SpeedPanel(
+    currentSpeed: Float,
+    isReversed: Boolean,
+    modifier: Modifier = Modifier,
+    onSpeedDragStarted: () -> Unit = {},
+    onSpeedDragEnded: () -> Unit = {},
+    onSpeedChanged: (Float) -> Unit,
+    onReversedChanged: (Boolean) -> Unit,
+    onClose: () -> Unit
+) {
+    val semanticColors = LocalClearCutColors.current
+    val presetSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f, 4f, 8f)
+
+    PremiumEditorPanel(
+        title = stringResource(R.string.tool_speed),
+        subtitle = stringResource(R.string.panel_speed_subtitle),
+        icon = Icons.Default.Speed,
+        accent = ClearCutAccents.Peach,
+        onClose = onClose,
+        modifier = modifier
+    ) {
+        PremiumPanelCard(accent = ClearCutAccents.Peach) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PremiumPanelPill(
+                    text = stringResource(
+                        R.string.tool_speed_multiplier_format,
+                        formatEffectValue(currentSpeed, 0.1f, 100f),
+                    ),
+                    accent = ClearCutAccents.Rosewater
+                )
+                PremiumPanelPill(
+                    text = if (isReversed) {
+                        stringResource(R.string.panel_speed_reverse_on)
+                    } else {
+                        stringResource(R.string.panel_speed_reverse_off)
+                    },
+                    accent = if (isReversed) ClearCutAccents.Red else semanticColors.subtext
+                )
+            }
+
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                presetSpeeds.forEach { speed ->
+                    val isActive = kotlin.math.abs(currentSpeed - speed) < 0.01f
+                    FilterChip(
+                        onClick = {
+                            onSpeedDragStarted()
+                            onSpeedChanged(speed)
+                            onSpeedDragEnded()
+                        },
+                        label = {
+                            Text(
+                                text = stringResource(
+                                    R.string.tool_speed_multiplier_format,
+                                    formatEffectValue(speed, 0.1f, 100f),
+                                ),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        selected = isActive,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = semanticColors.panel,
+                            labelColor = semanticColors.text,
+                            selectedContainerColor = ClearCutAccents.Peach.copy(alpha = 0.2f),
+                            selectedLabelColor = ClearCutAccents.Peach
+                        )
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        PremiumPanelCard(accent = ClearCutAccents.Mauve) {
+            EffectSlider(
+                label = stringResource(R.string.tool_custom_speed),
+                value = currentSpeed,
+                min = 0.1f,
+                max = 100f,
+                onDragStarted = onSpeedDragStarted,
+                onDragEnded = onSpeedDragEnded,
+                onValueChange = onSpeedChanged
+            )
+
+            Surface(
+                color = semanticColors.panel,
+                shape = RoundedCornerShape(Radius.lg),
+                border = BorderStroke(1.dp, semanticColors.cardStroke)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.tool_reverse),
+                            color = semanticColors.text,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = if (isReversed) {
+                                stringResource(R.string.panel_speed_reverse_hint_on)
+                            } else {
+                                stringResource(R.string.panel_speed_reverse_hint_off)
+                            },
+                            color = semanticColors.subtext,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Switch(
+                        checked = isReversed,
+                        onCheckedChange = onReversedChanged,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = ClearCutAccents.Rosewater,
+                            checkedTrackColor = ClearCutAccents.Mauve.copy(alpha = 0.4f)
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TransformPanel(
+    clip: Clip,
+    onTransformDragStarted: () -> Unit,
+    onTransformDragEnded: () -> Unit,
+    onTransformChanged: (positionX: Float?, positionY: Float?, scaleX: Float?, scaleY: Float?, rotation: Float?) -> Unit,
+    onOpacityDragStarted: () -> Unit,
+    onOpacityDragEnded: () -> Unit,
+    onOpacityChanged: (Float) -> Unit,
+    onToggleFlipHorizontal: () -> Unit,
+    onToggleFlipVertical: () -> Unit,
+    onReset: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    PremiumEditorPanel(
+        title = stringResource(R.string.tool_transform),
+        subtitle = stringResource(R.string.panel_transform_subtitle),
+        icon = Icons.Default.Transform,
+        accent = ClearCutAccents.Sapphire,
+        onClose = onClose,
+        modifier = modifier,
+        scrollable = true,
+        closeContentDescription = stringResource(R.string.cd_close_transform_panel),
+        headerActions = {
+            PremiumPanelIconButton(
+                icon = Icons.Default.Refresh,
+                contentDescription = stringResource(R.string.cd_reset),
+                onClick = onReset,
+                tint = ClearCutAccents.Peach
+            )
+        }
+    ) {
+        PremiumPanelCard(accent = ClearCutAccents.Sapphire) {
+            Text(
+                text = stringResource(R.string.panel_transform_summary_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.panel_transform_summary_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val compactLayout = maxWidth < 420.dp
+                val metricWidth = if (compactLayout) maxWidth else (maxWidth - 10.dp) / 2
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    TransformMetricCard(
+                        label = stringResource(R.string.text_editor_position),
+                        value = "${formatSigned(clip.positionX)} / ${formatSigned(clip.positionY)}",
+                        accent = ClearCutAccents.Sapphire,
+                        modifier = Modifier.width(metricWidth)
+                    )
+                    TransformMetricCard(
+                        label = stringResource(R.string.panel_transform_scale),
+                        value = "${formatEffectValue(clip.scaleX, 0.1f, 5f)}x / ${formatEffectValue(clip.scaleY, 0.1f, 5f)}x",
+                        accent = ClearCutAccents.Peach,
+                        modifier = Modifier.width(metricWidth)
+                    )
+                    TransformMetricCard(
+                        label = stringResource(R.string.tool_rotation),
+                        value = "${formatSigned(clip.rotation)} deg",
+                        accent = ClearCutAccents.Mauve,
+                        modifier = Modifier.width(metricWidth)
+                    )
+                    TransformMetricCard(
+                        label = stringResource(R.string.tool_opacity),
+                        value = "${(clip.opacity.coerceIn(0f, 1f) * 100).toInt()}%",
+                        accent = ClearCutAccents.Green,
+                        modifier = Modifier.width(metricWidth)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        PremiumPanelCard(accent = ClearCutAccents.Mauve) {
+            Text(
+                text = stringResource(R.string.panel_transform_framing_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.panel_transform_framing_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            EffectSlider(stringResource(R.string.tool_position_x), clip.positionX, -1f, 1f, onTransformDragStarted, onTransformDragEnded) {
+                onTransformChanged(it, null, null, null, null)
+            }
+            EffectSlider(stringResource(R.string.tool_position_y), clip.positionY, -1f, 1f, onTransformDragStarted, onTransformDragEnded) {
+                onTransformChanged(null, it, null, null, null)
+            }
+            EffectSlider(stringResource(R.string.tool_scale_x), clip.scaleX, 0.1f, 5f, onTransformDragStarted, onTransformDragEnded) {
+                onTransformChanged(null, null, it, null, null)
+            }
+            EffectSlider(stringResource(R.string.tool_scale_y), clip.scaleY, 0.1f, 5f, onTransformDragStarted, onTransformDragEnded) {
+                onTransformChanged(null, null, null, it, null)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        PremiumPanelCard(accent = ClearCutAccents.Sapphire) {
+            Text(
+                text = stringResource(R.string.panel_transform_flip_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.panel_transform_flip_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = clip.flipHorizontal,
+                    onClick = onToggleFlipHorizontal,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.SwapHoriz,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    label = { Text(stringResource(R.string.tool_flip_horizontal)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = semanticColors.panelHighest,
+                        labelColor = semanticColors.subtext,
+                        iconColor = semanticColors.subtext,
+                        selectedContainerColor = ClearCutAccents.Sapphire.copy(alpha = 0.18f),
+                        selectedLabelColor = ClearCutAccents.Sapphire,
+                        selectedLeadingIconColor = ClearCutAccents.Sapphire
+                    )
+                )
+                FilterChip(
+                    selected = clip.flipVertical,
+                    onClick = onToggleFlipVertical,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.SwapVert,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    label = { Text(stringResource(R.string.tool_flip_vertical)) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = semanticColors.panelHighest,
+                        labelColor = semanticColors.subtext,
+                        iconColor = semanticColors.subtext,
+                        selectedContainerColor = ClearCutAccents.Sapphire.copy(alpha = 0.18f),
+                        selectedLabelColor = ClearCutAccents.Sapphire,
+                        selectedLeadingIconColor = ClearCutAccents.Sapphire
+                    )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        PremiumPanelCard(accent = ClearCutAccents.Green) {
+            Text(
+                text = stringResource(R.string.panel_transform_presence_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.panel_transform_presence_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            EffectSlider(stringResource(R.string.tool_rotation), clip.rotation, -360f, 360f, onTransformDragStarted, onTransformDragEnded) {
+                onTransformChanged(null, null, null, null, it)
+            }
+            EffectSlider(stringResource(R.string.tool_opacity), clip.opacity, 0f, 1f, onOpacityDragStarted, onOpacityDragEnded) {
+                onOpacityChanged(it)
+            }
+        }
+    }
+}
+
+private data class CropPreset(
+    val ratio: AspectRatio,
+    @StringRes val platformLabelRes: Int
+)
+
+private val cropPresets = listOf(
+    CropPreset(AspectRatio.RATIO_16_9, R.string.crop_preset_platform_youtube_tv),
+    CropPreset(AspectRatio.RATIO_9_16, R.string.crop_preset_platform_tiktok_reels),
+    CropPreset(AspectRatio.RATIO_1_1, R.string.crop_preset_platform_instagram_square),
+    CropPreset(AspectRatio.RATIO_4_5, R.string.crop_preset_platform_instagram_portrait),
+    CropPreset(AspectRatio.RATIO_4_3, R.string.crop_preset_platform_classic),
+    CropPreset(AspectRatio.RATIO_3_4, R.string.crop_preset_platform_portrait_classic),
+    CropPreset(AspectRatio.RATIO_21_9, R.string.crop_preset_platform_cinematic)
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CropPanel(
+    onCropSelected: (AspectRatio) -> Unit,
+    currentAspect: AspectRatio,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    PremiumEditorPanel(
+        title = stringResource(R.string.tool_crop_aspect_ratio),
+        subtitle = stringResource(R.string.panel_crop_subtitle),
+        icon = Icons.Default.Crop,
+        accent = ClearCutAccents.Sapphire,
+        onClose = onClose,
+        modifier = modifier,
+        scrollable = true,
+        closeContentDescription = stringResource(R.string.cd_close_crop_panel)
+    ) {
+        PremiumPanelCard(accent = ClearCutAccents.Sapphire) {
+            Text(
+                text = currentAspect.label,
+                color = semanticColors.text,
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PremiumPanelPill(
+                    text = stringResource(aspectUseCaseRes(currentAspect)),
+                    accent = ClearCutAccents.Sapphire
+                )
+                PremiumPanelPill(
+                    text = stringResource(R.string.panel_crop_live_canvas),
+                    accent = ClearCutAccents.Rosewater
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        PremiumPanelCard(accent = ClearCutAccents.Rosewater) {
+            Text(
+                text = stringResource(R.string.panel_crop_presets_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.panel_crop_presets_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val compactLayout = maxWidth < 360.dp
+                val cardWidth = if (compactLayout) maxWidth else (maxWidth - 10.dp) / 2
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    cropPresets.forEach { preset ->
+                        CropPresetCard(
+                            preset = preset,
+                            isActive = currentAspect == preset.ratio,
+                            onClick = { onCropSelected(preset.ratio) },
+                            modifier = Modifier.width(cardWidth)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CropPresetCard(
+    preset: CropPreset,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    Surface(
+        modifier = modifier,
+        onClick = onClick,
+        color = semanticColors.panelHighest,
+        shape = RoundedCornerShape(Radius.lg),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isActive) ClearCutAccents.Sapphire.copy(alpha = 0.32f) else semanticColors.cardStroke
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    if (isActive) ClearCutAccents.Sapphire.copy(alpha = 0.08f) else Color.Transparent
+                )
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            val previewW: Float
+            val previewH: Float
+            val maxDim = 40f
+            if (preset.ratio.toFloat() >= 1f) {
+                previewW = maxDim
+                previewH = maxDim / preset.ratio.toFloat()
+            } else {
+                previewH = maxDim
+                previewW = maxDim * preset.ratio.toFloat()
+            }
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(Radius.md))
+                    .background(semanticColors.panel),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = previewW.dp, height = previewH.dp)
+                        .border(
+                            width = 2.dp,
+                            color = if (isActive) ClearCutAccents.Sapphire else semanticColors.subtext,
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = preset.ratio.label,
+                    color = if (isActive) ClearCutAccents.Sapphire else semanticColors.text,
+                    style = MaterialTheme.typography.titleSmall,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(preset.platformLabelRes),
+                    color = semanticColors.subtext,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TransitionPicker(
+    onTransitionSelected: (TransitionType) -> Unit,
+    onRemoveTransition: () -> Unit,
+    onDurationChanged: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    onDurationDragStarted: () -> Unit = {},
+    onEasingChanged: (TransitionEasing) -> Unit = {},
+    onClose: () -> Unit,
+    currentTransition: Transition?
+) {
+    val semanticColors = LocalClearCutColors.current
+    PremiumEditorPanel(
+        title = stringResource(R.string.tool_transitions),
+        subtitle = stringResource(R.string.panel_transition_subtitle),
+        icon = Icons.Default.SwapHoriz,
+        accent = ClearCutAccents.Mauve,
+        onClose = onClose,
+        modifier = modifier,
+        scrollable = true,
+        closeContentDescription = stringResource(R.string.transition_picker_close_cd),
+        headerActions = {
+            if (currentTransition != null) {
+                PremiumPanelIconButton(
+                    icon = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.tool_remove),
+                    onClick = onRemoveTransition,
+                    tint = ClearCutAccents.Red
+                )
+            }
+        }
+    ) {
+        PremiumPanelCard(accent = ClearCutAccents.Mauve) {
+            Text(
+                text = stringResource(R.string.panel_transition_summary_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.panel_transition_summary_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = if (currentTransition != null) {
+                    currentTransition.type.displayName
+                } else {
+                    stringResource(R.string.panel_transition_none_selected)
+                },
+                color = semanticColors.text,
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PremiumPanelPill(
+                    text = if (currentTransition != null) {
+                        stringResource(R.string.panel_transition_active)
+                    } else {
+                        stringResource(R.string.panel_transition_pick_one)
+                    },
+                    accent = ClearCutAccents.Rosewater
+                )
+                if (currentTransition != null) {
+                    PremiumPanelPill(
+                        text = stringResource(
+                            R.string.panel_transition_duration_value,
+                            currentTransition.durationMs
+                        ),
+                        accent = ClearCutAccents.Peach
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        PremiumPanelCard(accent = ClearCutAccents.Rosewater) {
+            Text(
+                text = stringResource(R.string.panel_transition_presets_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.panel_transition_presets_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val columns = if (maxWidth < 420.dp) 2 else 3
+                val spacing = 10.dp
+                val cardWidth = if (columns == 2) {
+                    (maxWidth - spacing) / 2
+                } else {
+                    (maxWidth - (spacing * 2)) / 3
+                }
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                    verticalArrangement = Arrangement.spacedBy(spacing)
+                ) {
+                    TransitionType.entries.forEach { type ->
+                        TransitionOptionCard(
+                            type = type,
+                            isActive = currentTransition?.type == type,
+                            onClick = { onTransitionSelected(type) },
+                            modifier = Modifier.width(cardWidth)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (currentTransition != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            PremiumPanelCard(accent = ClearCutAccents.Peach) {
+                Text(
+                    text = stringResource(R.string.panel_transition_duration_title),
+                    color = semanticColors.text,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(R.string.panel_transition_duration_description),
+                    color = semanticColors.subtext,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                EffectSlider(
+                    label = stringResource(R.string.tool_duration),
+                    value = currentTransition.durationMs.toFloat(),
+                    min = 100f,
+                    max = 2000f,
+                    onDragStarted = onDurationDragStarted,
+                    onValueChange = { onDurationChanged(it.toLong()) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            PremiumPanelCard(accent = ClearCutAccents.Lavender) {
+                Text(
+                    text = stringResource(R.string.tool_transition_easing_title),
+                    color = semanticColors.text,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(R.string.tool_transition_easing_description),
+                    color = semanticColors.subtext,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TransitionEasing.entries.forEach { easing ->
+                        val isSelected = currentTransition.easing == easing
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onEasingChanged(easing) },
+                            label = { Text(easing.displayName) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = semanticColors.surfaceLow,
+                                selectedContainerColor = ClearCutAccents.Lavender.copy(alpha = 0.3f),
+                                labelColor = semanticColors.text,
+                                selectedLabelColor = ClearCutAccents.Lavender
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                borderColor = if (isSelected) ClearCutAccents.Lavender else semanticColors.surface,
+                                selectedBorderColor = ClearCutAccents.Lavender,
+                                enabled = true,
+                                selected = isSelected
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransitionOptionCard(
+    type: TransitionType,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    val icon = transitionIcon(type)
+
+    Surface(
+        modifier = modifier,
+        onClick = onClick,
+        color = semanticColors.panelHighest,
+        shape = RoundedCornerShape(Radius.xl),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isActive) ClearCutAccents.Mauve.copy(alpha = 0.32f) else semanticColors.cardStroke
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    if (isActive) ClearCutAccents.Mauve.copy(alpha = 0.08f) else Color.Transparent
+                )
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(Radius.xl))
+                    .background(if (isActive) ClearCutAccents.Mauve.copy(alpha = 0.16f) else semanticColors.panel),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = type.displayName,
+                    tint = if (isActive) ClearCutAccents.Mauve else semanticColors.subtext,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Text(
+                text = type.displayName,
+                color = if (isActive) ClearCutAccents.Mauve else semanticColors.text,
+                style = MaterialTheme.typography.titleSmall,
+                textAlign = TextAlign.Center,
+                maxLines = 2
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransformMetricCard(
+    label: String,
+    value: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    Surface(
+        modifier = modifier,
+        color = semanticColors.panel,
+        shape = RoundedCornerShape(Radius.md),
+        border = BorderStroke(1.dp, semanticColors.cardStroke)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.labelMedium
+            )
+            Text(
+                text = value,
+                color = accent,
+                style = MaterialTheme.typography.titleSmall
+            )
+        }
+    }
+}
+
+private fun effectAccent(category: EffectCategory): Color = when (category) {
+    EffectCategory.COLOR -> ClearCutAccents.Sapphire
+    EffectCategory.FILTER -> ClearCutAccents.Mauve
+    EffectCategory.BLUR -> ClearCutAccents.Sky
+    EffectCategory.DISTORTION -> ClearCutAccents.Peach
+    EffectCategory.KEYING -> ClearCutAccents.Green
+    EffectCategory.SPEED -> ClearCutAccents.Yellow
+}
+
+private fun effectIcon(category: EffectCategory): ImageVector = when (category) {
+    EffectCategory.COLOR -> Icons.Default.Palette
+    EffectCategory.FILTER -> Icons.Default.FilterVintage
+    EffectCategory.BLUR -> Icons.Default.BlurOn
+    EffectCategory.DISTORTION -> Icons.Default.Waves
+    EffectCategory.KEYING -> Icons.Default.Wallpaper
+    EffectCategory.SPEED -> Icons.Default.Speed
+}
+
+private fun transitionIcon(type: TransitionType): ImageVector = when (type) {
+    TransitionType.DISSOLVE -> Icons.Default.Gradient
+    TransitionType.WIPE_LEFT, TransitionType.WIPE_RIGHT,
+    TransitionType.WIPE_UP, TransitionType.WIPE_DOWN -> Icons.Default.SwipeLeft
+    TransitionType.ZOOM_IN, TransitionType.ZOOM_OUT -> Icons.Default.ZoomIn
+    TransitionType.SPIN -> Icons.AutoMirrored.Filled.RotateRight
+    TransitionType.FLIP -> Icons.Default.Flip
+    TransitionType.CUBE -> Icons.Default.ViewInAr
+    TransitionType.RIPPLE -> Icons.Default.Water
+    TransitionType.PIXELATE -> Icons.Default.GridOn
+    TransitionType.MORPH -> Icons.Default.Transform
+    TransitionType.GLITCH -> Icons.Default.BrokenImage
+    TransitionType.SWIRL -> Icons.Default.Cyclone
+    TransitionType.HEART -> Icons.Default.Favorite
+    TransitionType.DREAMY -> Icons.Default.AutoAwesome
+    TransitionType.BURN -> Icons.Default.LocalFireDepartment
+    TransitionType.LENS_FLARE -> Icons.Default.LensBlur
+    TransitionType.PAGE_CURL -> Icons.Default.AutoStories
+    TransitionType.KALEIDOSCOPE -> Icons.Default.FilterVintage
+    else -> Icons.Default.SwapHoriz
+}
+
+@StringRes
+private fun aspectUseCaseRes(ratio: AspectRatio): Int = when (ratio) {
+    AspectRatio.RATIO_9_16 -> R.string.panel_crop_use_case_short_form
+    AspectRatio.RATIO_1_1 -> R.string.panel_crop_use_case_square
+    AspectRatio.RATIO_4_5 -> R.string.panel_crop_use_case_feed
+    AspectRatio.RATIO_21_9 -> R.string.panel_crop_use_case_cinematic
+    else -> R.string.panel_crop_use_case_landscape
+}
+
+private fun formatEffectValue(value: Float, min: Float, max: Float): String {
+    val safeValue = if (value.isFinite()) value else min
+    val span = (max - min).takeIf { it.isFinite() } ?: 0f
+    return when {
+        span <= 2f -> String.format(Locale.US, "%.2f", safeValue)
+        span <= 20f -> String.format(Locale.US, "%.1f", safeValue)
+        else -> safeValue.toInt().toString()
+    }
+}
+
+private fun formatSigned(value: Float): String {
+    val formatted = if (kotlin.math.abs(value) < 10f) {
+        String.format(Locale.US, "%.2f", value)
+    } else {
+        String.format(Locale.US, "%.1f", value)
+    }
+    return if (value > 0f) "+$formatted" else formatted
+}
+
+@Composable
+private fun TextOverlayList(
+    overlays: List<TextOverlay>,
+    onEdit: (String) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    val semanticColors = LocalClearCutColors.current
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = semanticColors.panel,
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+        border = BorderStroke(1.dp, semanticColors.cardStroke.copy(alpha = 0.85f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.tool_text_overlays),
+                        color = semanticColors.text,
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = stringResource(R.string.tool_text_overlays_description),
+                        color = semanticColors.subtext,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                PremiumPanelPill(
+                    text = stringResource(R.string.tool_text_overlays_count, overlays.size),
+                    accent = ClearCutAccents.Mauve
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 188.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                overlays.forEach { overlay ->
+                    val overlayAccent = Color(overlay.color)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = semanticColors.panelHighest,
+                        shape = RoundedCornerShape(Radius.xl),
+                        border = BorderStroke(1.dp, semanticColors.cardStroke)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onEdit(overlay.id) }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(Radius.xl))
+                                    .background(overlayAccent.copy(alpha = 0.14f))
+                                    .border(
+                                        BorderStroke(1.dp, overlayAccent.copy(alpha = 0.22f)),
+                                        RoundedCornerShape(Radius.xl)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Title,
+                                    contentDescription = stringResource(R.string.tool_text_overlay_cd),
+                                    tint = overlayAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = overlay.text.ifBlank { stringResource(R.string.tool_text_overlay_cd) },
+                                    color = semanticColors.text,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                PremiumPanelPill(
+                                    text = formatTextOverlayRange(overlay),
+                                    accent = ClearCutAccents.Lavender
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                PremiumPanelIconButton(
+                                    icon = Icons.Default.Edit,
+                                    contentDescription = stringResource(R.string.tool_edit),
+                                    onClick = { onEdit(overlay.id) },
+                                    tint = ClearCutAccents.Mauve
+                                )
+                                PremiumPanelIconButton(
+                                    icon = Icons.Default.Delete,
+                                    contentDescription = stringResource(R.string.tool_delete),
+                                    onClick = { onDelete(overlay.id) },
+                                    tint = ClearCutAccents.Red
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatTextOverlayRange(overlay: TextOverlay): String {
+    val startSec = overlay.startTimeMs / 1000f
+    val endSec = overlay.endTimeMs / 1000f
+    return String.format(Locale.US, "%.1fs — %.1fs", startSec, endSec)
+}

@@ -1,0 +1,575 @@
+package com.novacut.editor.ui.editor
+
+import com.novacut.editor.ui.theme.ClearCutAccents
+import com.novacut.editor.ui.theme.LocalClearCutColors
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.novacut.editor.R
+import com.novacut.editor.engine.CutAssistantEngine
+import com.novacut.editor.engine.SilenceDetectionEngine.CutProposal
+import com.novacut.editor.engine.SilenceDetectionEngine.ProposalCategory
+import com.novacut.editor.model.Clip
+import com.novacut.editor.model.Track
+import com.novacut.editor.ui.theme.ClearCutPrimaryButton
+import com.novacut.editor.ui.theme.ClearCutSecondaryButton
+import com.novacut.editor.ui.theme.Radius
+import java.util.Locale
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CutAssistantReviewPanel(
+    review: CutAssistantEngine.ReviewSet,
+    tracks: List<Track>,
+    onToggleProposal: (String) -> Unit,
+    onAcceptAll: () -> Unit,
+    onRejectAll: () -> Unit,
+    onApply: () -> Unit,
+    onReanalyze: (com.novacut.editor.engine.SilenceDetectionEngine.AutoCutConfig) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    val clipLookup = remember(tracks) {
+        tracks.flatMap { it.clips }.associateBy { it.id }
+    }
+    val acceptedCount = review.acceptedProposals.size
+    val proposalCount = review.proposals.size
+    val silenceCount = review.proposals.count { it.reason == CutProposal.Reason.SILENCE }
+    val fillerCount = review.proposals.count { it.reason == CutProposal.Reason.FILLER_WORD }
+    val reclaimLabel = formatCutAssistantDuration(review.totalReclaimMs)
+
+    PremiumEditorPanel(
+        title = stringResource(R.string.cut_assistant_title),
+        subtitle = stringResource(R.string.cut_assistant_subtitle),
+        icon = Icons.Default.ContentCut,
+        accent = ClearCutAccents.Peach,
+        onClose = onClose,
+        closeContentDescription = stringResource(R.string.cut_assistant_close_cd),
+        modifier = modifier,
+        scrollable = false
+    ) {
+        PremiumPanelCard(accent = ClearCutAccents.Peach) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.cut_assistant_overview_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = semanticColors.text
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.cut_assistant_overview_body),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = semanticColors.subtext
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PremiumPanelPill(
+                        text = pluralStringResource(
+                            R.plurals.cut_assistant_selected_count,
+                            acceptedCount,
+                            acceptedCount
+                        ),
+                        accent = if (acceptedCount > 0) ClearCutAccents.Green else semanticColors.overlayStrong
+                    )
+                    PremiumPanelPill(
+                        text = stringResource(R.string.cut_assistant_reclaim_pill, reclaimLabel),
+                        accent = ClearCutAccents.Peach
+                    )
+                }
+            }
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PremiumPanelPill(
+                    text = pluralStringResource(
+                        R.plurals.cut_assistant_candidate_count,
+                        proposalCount,
+                        proposalCount
+                    ),
+                    accent = ClearCutAccents.Blue
+                )
+                PremiumPanelPill(
+                    text = stringResource(R.string.cut_assistant_silence_count, silenceCount),
+                    accent = ClearCutAccents.Mauve
+                )
+                PremiumPanelPill(
+                    text = stringResource(R.string.cut_assistant_filler_count, fillerCount),
+                    accent = ClearCutAccents.Teal
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        CutAssistantTuningCard(
+            config = review.config,
+            onReanalyze = onReanalyze,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (review.proposals.isEmpty()) {
+            CutAssistantEmptyState(onClose = onClose)
+        } else {
+            // Highest-Value #6 — unified Cut Assistant review with chip
+            // bucket filtering. Default all-on so first-open shows every
+            // proposal; the user narrows via the chip row.
+            var enabledCategories by remember(review.proposals) {
+                mutableStateOf(ProposalCategory.entries.toSet())
+            }
+            val visibleProposals = remember(review.proposals, enabledCategories) {
+                when {
+                    enabledCategories.isEmpty() -> emptyList()
+                    enabledCategories.size == ProposalCategory.entries.size -> review.proposals
+                    else -> review.proposals.filter { reviewProposalCategory(it) in enabledCategories }
+                }
+            }
+
+            PremiumPanelCard(accent = ClearCutAccents.Blue) {
+                Text(
+                    text = stringResource(R.string.cut_assistant_review_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = semanticColors.text
+                )
+                Text(
+                    text = stringResource(R.string.cut_assistant_review_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = semanticColors.subtext
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                CutAssistantFilterChips(
+                    proposals = review.proposals,
+                    enabled = enabledCategories,
+                    onToggle = { cat ->
+                        enabledCategories = if (cat in enabledCategories) {
+                            enabledCategories - cat
+                        } else {
+                            enabledCategories + cat
+                        }
+                    },
+                    onToggleAll = {
+                        enabledCategories =
+                            if (enabledCategories.size == ProposalCategory.entries.size) {
+                                emptySet()
+                            } else {
+                                ProposalCategory.entries.toSet()
+                            }
+                    },
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(
+                        items = visibleProposals,
+                        key = { it.id }
+                    ) { proposal ->
+                        CutProposalReviewCard(
+                            proposal = proposal,
+                            clip = clipLookup[proposal.clipId],
+                            isAccepted = proposal.id in review.accepted,
+                            onToggle = { onToggleProposal(proposal.id) }
+                        )
+                    }
+                }
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ClearCutSecondaryButton(
+                        text = stringResource(R.string.cut_assistant_reject_all),
+                        onClick = onRejectAll,
+                        icon = Icons.Default.Close,
+                        modifier = Modifier.widthIn(min = 128.dp)
+                    )
+                    ClearCutSecondaryButton(
+                        text = stringResource(R.string.cut_assistant_accept_all),
+                        onClick = onAcceptAll,
+                        icon = Icons.Default.Check,
+                        modifier = Modifier.widthIn(min = 128.dp)
+                    )
+                    ClearCutPrimaryButton(
+                        text = stringResource(R.string.cut_assistant_apply_selected, acceptedCount),
+                        onClick = onApply,
+                        icon = Icons.Default.ContentCut,
+                        enabled = acceptedCount > 0,
+                        modifier = Modifier.widthIn(min = 164.dp)
+                    )
+                }
+
+                if (acceptedCount == 0) {
+                    Text(
+                        text = stringResource(R.string.cut_assistant_none_selected_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = semanticColors.subtext
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CutAssistantTuningCard(
+    config: com.novacut.editor.engine.SilenceDetectionEngine.AutoCutConfig,
+    onReanalyze: (com.novacut.editor.engine.SilenceDetectionEngine.AutoCutConfig) -> Unit,
+) {
+    val semanticColors = LocalClearCutColors.current
+    var threshold by remember(config) { mutableFloatStateOf(config.silenceThreshold) }
+    var minSilenceMs by remember(config) { mutableFloatStateOf(config.minSilenceMs.toFloat()) }
+    var mergeGapMs by remember(config) { mutableFloatStateOf(config.mergeGapMs.toFloat()) }
+    val adjustedConfig = config.copy(
+        silenceThreshold = threshold,
+        minSilenceMs = minSilenceMs.toLong(),
+        mergeGapMs = mergeGapMs.toLong(),
+    )
+    val isDirty = adjustedConfig != config
+
+    PremiumPanelCard(accent = ClearCutAccents.Sapphire) {
+        Text(
+            text = stringResource(R.string.cut_assistant_tuning_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = semanticColors.text,
+        )
+        Text(
+            text = stringResource(R.string.cut_assistant_tuning_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = semanticColors.subtext,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(
+                R.string.cut_assistant_threshold_value,
+                threshold * 100f,
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = semanticColors.text,
+        )
+        Slider(
+            value = threshold,
+            onValueChange = { threshold = it },
+            valueRange = 0.005f..0.1f,
+            steps = 18,
+        )
+
+        Text(
+            text = stringResource(
+                R.string.cut_assistant_min_silence_value,
+                formatCutAssistantDuration(minSilenceMs.toLong()),
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = semanticColors.text,
+        )
+        Slider(
+            value = minSilenceMs,
+            onValueChange = { minSilenceMs = it },
+            valueRange = 250f..3_000f,
+            steps = 10,
+        )
+
+        Text(
+            text = stringResource(
+                R.string.cut_assistant_merge_gap_value,
+                formatCutAssistantDuration(mergeGapMs.toLong()),
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = semanticColors.text,
+        )
+        Slider(
+            value = mergeGapMs,
+            onValueChange = { mergeGapMs = it },
+            valueRange = 0f..1_000f,
+            steps = 9,
+        )
+
+        ClearCutSecondaryButton(
+            text = stringResource(R.string.cut_assistant_reanalyze),
+            onClick = { onReanalyze(adjustedConfig) },
+            enabled = isDirty,
+            icon = Icons.Default.GraphicEq,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun CutAssistantEmptyState(
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    PremiumPanelCard(accent = ClearCutAccents.Green, modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Surface(
+                color = ClearCutAccents.Green.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, ClearCutAccents.Green.copy(alpha = 0.2f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = ClearCutAccents.Green,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.cut_assistant_empty_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = semanticColors.text
+                )
+                Text(
+                    text = stringResource(R.string.cut_assistant_empty_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = semanticColors.subtext
+                )
+            }
+        }
+        ClearCutSecondaryButton(
+            text = stringResource(R.string.done),
+            onClick = onClose,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CutProposalReviewCard(
+    proposal: CutAssistantEngine.ReviewProposal,
+    clip: Clip?,
+    isAccepted: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    val accent = when (proposal.reason) {
+        CutProposal.Reason.SILENCE -> ClearCutAccents.Mauve
+        CutProposal.Reason.FILLER_WORD -> ClearCutAccents.Teal
+    }
+    val reasonLabel = when (proposal.reason) {
+        CutProposal.Reason.SILENCE -> stringResource(R.string.cut_assistant_reason_silence)
+        CutProposal.Reason.FILLER_WORD -> stringResource(R.string.cut_assistant_reason_filler)
+    }
+    val fallbackDetail = when (proposal.reason) {
+        CutProposal.Reason.SILENCE -> stringResource(R.string.cut_assistant_detail_silence)
+        CutProposal.Reason.FILLER_WORD -> stringResource(R.string.cut_assistant_detail_filler)
+    }
+    val detail = proposal.matchedText
+        ?.takeIf { it.isNotBlank() }
+        ?.let { stringResource(R.string.cut_assistant_matched_text, it) }
+        ?: fallbackDetail
+    val clipName = clip?.displayName() ?: stringResource(R.string.cut_assistant_unknown_clip)
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Checkbox, onClick = onToggle),
+        color = if (isAccepted) semanticColors.panelHighest else semanticColors.panelRaised.copy(alpha = 0.78f),
+        shape = RoundedCornerShape(Radius.xl),
+        border = BorderStroke(
+            1.dp,
+            if (isAccepted) accent.copy(alpha = 0.42f) else semanticColors.cardStroke
+        )
+    ) {
+        Box(
+            modifier = Modifier.background(
+                Brush.verticalGradient(
+                    listOf(
+                        accent.copy(alpha = if (isAccepted) 0.12f else 0.05f),
+                        semanticColors.panelHighest.copy(alpha = 0.98f)
+                    )
+                )
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isAccepted,
+                    onCheckedChange = { onToggle() }
+                )
+                Surface(
+                    color = accent.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, accent.copy(alpha = 0.2f))
+                ) {
+                    Icon(
+                        imageVector = if (proposal.reason == CutProposal.Reason.SILENCE) {
+                            Icons.Default.Schedule
+                        } else {
+                            Icons.Default.GraphicEq
+                        },
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .size(18.dp)
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = reasonLabel,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = semanticColors.text,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.cut_assistant_duration_saved,
+                                formatCutAssistantDuration(proposal.durationMs)
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accent
+                        )
+                    }
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = semanticColors.subtext,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PremiumPanelPill(
+                            text = stringResource(R.string.cut_assistant_clip_pill, clipName),
+                            accent = ClearCutAccents.Blue
+                        )
+                        PremiumPanelPill(
+                            text = stringResource(
+                                R.string.cut_assistant_time_range,
+                                formatCutAssistantTimestamp(proposal.timelineStartMs),
+                                formatCutAssistantTimestamp(proposal.timelineEndMs)
+                            ),
+                            accent = accent
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun Clip.displayName(): String {
+    return sourceUri.lastPathSegment
+        ?.substringAfterLast('/')
+        ?.takeIf { it.isNotBlank() }
+        ?: id.take(8)
+}
+
+private fun formatCutAssistantTimestamp(ms: Long): String {
+    val clampedMs = ms.coerceAtLeast(0L)
+    val totalSeconds = clampedMs / 1000L
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    val tenths = (clampedMs % 1000L) / 100L
+    return if (minutes > 0L) {
+        String.format(Locale.US, "%d:%02d.%d", minutes, seconds, tenths)
+    } else {
+        String.format(Locale.US, "0:%02d.%d", seconds, tenths)
+    }
+}
+
+private fun formatCutAssistantDuration(ms: Long): String {
+    val clampedMs = ms.coerceAtLeast(0L)
+    return if (clampedMs < 60_000L) {
+        String.format(Locale.US, "%.1fs", clampedMs / 1000f)
+    } else {
+        val totalSeconds = clampedMs / 1000L
+        val minutes = totalSeconds / 60L
+        val seconds = totalSeconds % 60L
+        String.format(Locale.US, "%dm %02ds", minutes, seconds)
+    }
+}

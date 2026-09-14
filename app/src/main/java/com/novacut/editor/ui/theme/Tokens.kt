@@ -1,0 +1,166 @@
+package com.novacut.editor.ui.theme
+
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
+/**
+ * ClearCut design tokens.
+ *
+ * Centralized spacing / radius / motion / elevation values so the editor surfaces have a
+ * single, coherent rhythm instead of every panel inventing its own scale. Use these in place
+ * of inline `8.dp` / `tween(120)` / `RoundedCornerShape(12.dp)` literals where practical.
+ *
+ * The scales are deliberately small. Every unit has a purpose.
+ */
+object Spacing {
+    /** 2dp — hairline gaps between tightly coupled elements (icon-on-icon, badges). */
+    val xxs = 2.dp
+
+    /** 4dp — micro spacing inside chips, between an icon and its tight label. */
+    val xs = 4.dp
+
+    /** 8dp — default gap between sibling controls in a tight row. */
+    val sm = 8.dp
+
+    /** 12dp — comfortable gap between distinct controls; default panel-content spacing. */
+    val md = 12.dp
+
+    /** 16dp — section padding, default sheet padding, primary card padding. */
+    val lg = 16.dp
+
+    /** 20dp — breathing room between major panel sections, dialog padding. */
+    val xl = 20.dp
+
+    /** 24dp — outer padding for hero/onboarding surfaces. */
+    val xxl = 24.dp
+
+    /** 32dp — page-level top padding above headlines. */
+    val xxxl = 32.dp
+}
+
+// Corner radii for the no-pill radius system: allowed values are 0/4/6/8/10/12dp
+// only. Each KDoc states the actual dp of the constant — never "restore" a
+// larger value from a doc comment, and never introduce a capsule/999/50%
+// radius. `xxl` is intentionally capped equal to `xl` (12dp) so nothing rounds
+// beyond the 12dp ceiling.
+object Radius {
+    /** 4dp — tags, status labels, single-letter badges. */
+    val xs = 4.dp
+
+    /** 6dp — tight buttons and slim rectangular chips. */
+    val sm = 6.dp
+
+    /** 8dp — text fields, default control surfaces. */
+    val md = 8.dp
+
+    /** 10dp — primary buttons, prominent chips. */
+    val lg = 10.dp
+
+    /** 12dp — cards inside panels. */
+    val xl = 12.dp
+
+    /** 12dp — top-level panel/sheet corners; intentionally capped equal to `xl`
+     * (the 12dp ceiling of the no-pill radius system), not 24dp. */
+    val xxl = 12.dp
+
+    /** 6dp — legacy alias retained for older call sites; do not use for capsule shapes. */
+    @Deprecated("Use Radius.sm for compact rectangular badges.")
+    val pill = sm
+}
+
+object Elevation {
+    /** Background — lowest layer (app scaffold). */
+    val flat = 0.dp
+
+    /** Cards on top of panels. */
+    val card = 1.dp
+
+    /** Floating panels, elevated chips. */
+    val raised = 3.dp
+
+    /** Sheets, dialogs. */
+    val sheet = 6.dp
+
+    /** Snackbars, transient floating affordances. */
+    val toast = 8.dp
+}
+
+/**
+ * Fixed colours for controls that edit media content rather than the application chrome.
+ * These values intentionally remain stable across appearance modes so a saved chroma-key
+ * preset keeps the same meaning when it is reopened.
+ */
+object ClearCutContentColors {
+    val ChromaGreen = Color(0xFF00FF00)
+    val ChromaBlue = Color(0xFF0044FF)
+    val ChromaRed = Color(0xFFFF0000)
+}
+
+/**
+ * Motion tokens.
+ *
+ * Premium UI feels coherent because every transition shares the same easing curves and
+ * durations. Use these instead of ad-hoc `tween(150)` / `spring()` calls.
+ */
+object Motion {
+    /** Material 3 emphasized easing (FastOutSlowIn-equivalent, more cinematic). */
+    val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+    /** Decelerate — incoming content (panels showing, toasts entering). */
+    val DecelerateEasing = CubicBezierEasing(0f, 0f, 0.2f, 1f)
+
+    /** Accelerate — outgoing content (panels dismissing). */
+    val AccelerateEasing = CubicBezierEasing(0.4f, 0f, 1f, 1f)
+
+    /** Standard easing — symmetric for hover/press/selection state changes. */
+    val StandardEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+    /** 120 ms — instant feedback (selection indicators, hover/press tints). */
+    const val DurationFast = 120
+
+    /** 200 ms — small UI changes (chip expansion, badge pulses, dropdown unfurl). */
+    const val DurationStandard = 200
+
+    /** 280 ms — panel + sheet enter/exit, full-section transitions. */
+    const val DurationMedium = 280
+
+    /** 400 ms — large reveals (onboarding cards, hero state changes). */
+    const val DurationLarge = 400
+
+    fun fast(easing: CubicBezierEasing = StandardEasing) =
+        tween<Float>(durationMillis = DurationFast, easing = easing)
+
+    fun standard(easing: CubicBezierEasing = StandardEasing) =
+        tween<Float>(durationMillis = DurationStandard, easing = easing)
+
+    fun panelEnter() =
+        tween<Float>(durationMillis = DurationMedium, easing = DecelerateEasing)
+
+    fun panelExit() =
+        tween<Float>(durationMillis = DurationFast, easing = AccelerateEasing)
+
+    /** Springy bounce — only for delightful confirmations (success ticks, save badges). */
+    fun bounceSpring() = spring<Float>(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMediumLow
+    )
+
+    /** Critical damped spring — primary tactile interactions (chip selection, knob feedback). */
+    fun snappySpring() = spring<Float>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow
+    )
+}
+
+/**
+ * Touch target tokens. Material 3 spec is 48dp minimum; we provide an extra-comfy variant
+ * for the editor's primary-action affordances on phones held in landscape.
+ */
+object TouchTarget {
+    val minimum = 48.dp
+    val comfortable = 56.dp
+}

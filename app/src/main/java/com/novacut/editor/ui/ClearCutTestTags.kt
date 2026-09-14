@@ -1,0 +1,58 @@
+package com.novacut.editor.ui
+
+object ClearCutTestTags {
+    const val PROJECTS_SCREEN = "projects.screen"
+    const val PROJECTS_CREATE_PROJECT = "projects.createProject"
+    const val PROJECTS_TEMPLATES = "projects.templates"
+    const val PROJECT_CARD_PREFIX = "projects.card."
+    const val PROJECTS_SETTINGS = "projects.settings"
+
+    const val TEMPLATE_SHEET = "templates.sheet"
+    const val TEMPLATE_GRID = "templates.grid"
+    const val TEMPLATE_BLANK = "templates.blank"
+
+    const val EDITOR_SCREEN = "editor.screen"
+    const val EDITOR_BACK = "editor.back"
+    const val EDITOR_EMPTY_ADD_MEDIA = "editor.emptyAddMedia"
+    const val EDITOR_EXPORT = "editor.export"
+    const val EDITOR_COMPOUND_BREADCRUMB = "editor.compoundBreadcrumb"
+    const val EDITOR_DESKTOP_SIDEBAR = "editor.desktopSidebar"
+    const val EDITOR_UNDO = "editor.undo"
+    const val EDITOR_REDO = "editor.redo"
+    const val EDITOR_TOOL_TAB_PREFIX = "editor.toolTab."
+    const val EDITOR_TOOL_ACTION_LIST = "editor.toolActionList"
+    const val EDITOR_TOOL_ACTION_PREFIX = "editor.toolAction."
+
+    const val TIMELINE_SPLIT = "timeline.split"
+    const val TIMELINE_DELETE = "timeline.delete"
+    const val TIMELINE_TRIM_START = "timeline.trimStart"
+    const val TIMELINE_TRIM_END = "timeline.trimEnd"
+    const val TRACK_OFFSET_INPUT = "timeline.track.offset.input"
+    const val CLIP_AUDIO_SYNC_OFFSET_INPUT = "timeline.clip.audio-sync-offset.input"
+    const val TIMELINE_CLIP_PREFIX = "timeline.clip."
+
+    const val MEDIA_PICKER_SHEET = "mediaPicker.sheet"
+    const val MEDIA_PICKER_CLOSE = "mediaPicker.close"
+
+    const val EXPORT_SHEET = "export.sheet"
+    const val EXPORT_CLOSE = "export.close"
+    const val EXPORT_PRIMARY_ACTION = "export.primaryAction"
+
+    const val MEDIA_MANAGER_PANEL = "mediaManager.panel"
+    const val MEDIA_MANAGER_CLOSE = "mediaManager.close"
+    const val BATCH_EXPORT_PANEL = "batchExport.panel"
+    const val BATCH_EXPORT_CLOSE = "batchExport.close"
+
+    const val SETTINGS_SCREEN = "settings.screen"
+    const val SETTINGS_BACK = "settings.back"
+    const val SETTINGS_REPLAY_TUTORIAL = "settings.replayTutorial"
+    const val SETTINGS_PRIVACY_OPEN = "settings.privacy.open"
+    const val SETTINGS_PRIVACY_DASHBOARD = "settings.privacy.dashboard"
+    const val SETTINGS_PRIVACY_CLOSE = "settings.privacy.close"
+    const val SETTINGS_LICENSES_OPEN = "settings.licenses.open"
+    const val SETTINGS_LICENSES_DIALOG = "settings.licenses.dialog"
+    const val SETTINGS_LICENSES_CLOSE = "settings.licenses.close"
+
+    const val TUTORIAL_SCREEN = "tutorial.screen"
+    const val TUTORIAL_SKIP = "tutorial.skip"
+}

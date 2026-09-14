@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path name="frame_capture" path="frames/" />
+    <cache-path name="camera_captures" path="camera-captures/" />
+    <files-path name="frame_captures" path="frame_captures/" />
+    <files-path name="freeze_frames" path="freeze_frames/" />
+    <files-path name="internal_exports" path="ClearCut/" />
+    <files-path name="internal_archives" path="archives/" />
+    <files-path name="diagnostic_shares" path="diagnostic-shares/" />
+    <files-path name="internal_templates" path="templates/" />
+    <external-files-path name="exports" path="Movies/ClearCut/" />
+    <external-files-path name="external_archives" path="archives/" />
+    <external-files-path name="timeline_exports" path="exports/" />
+    <external-files-path name="templates" path="templates/" />
+    <files-path name="voiceovers" path="voiceovers/" />
+    <files-path name="tts_output" path="tts_output/" />
+    <files-path name="legacy_tts_output" path="tts/" />
+    <files-path name="noise_reduced" path="noise_reduced/" />
+    <files-path name="stabilized" path="stabilized/" />
+    <files-path name="stabilization_profiles" path="stabilization_profiles/" />
+    <files-path name="luts" path="luts/" />
+</paths>

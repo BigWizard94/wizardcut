@@ -1,0 +1,114 @@
+{
+  "assets": [
+    {
+      "altText": "ClearCut app icon",
+      "caption": "High-resolution Play Store icon.",
+      "height": 512,
+      "path": "icon.png",
+      "source": "_source/icon.svg",
+      "sourceSha256": "dc7f4a927479090525e3041e13ee826165a16e1f108371aa76a85fb074a06e3c",
+      "sourceType": "generated-svg",
+      "width": 512
+    },
+    {
+      "altText": "ClearCut feature graphic",
+      "caption": "Feature graphic for the main store listing.",
+      "height": 500,
+      "path": "featureGraphic.png",
+      "source": "_source/featureGraphic.svg",
+      "sourceSha256": "9b2ff16acec0fa49a400e7ba4ac95020e567779f51d1a7563c038989ecbdb76c",
+      "sourceType": "generated-svg",
+      "width": 1024
+    },
+    {
+      "altText": "Project gallery capture",
+      "caption": "Project gallery captured from the running app.",
+      "height": 1920,
+      "path": "phoneScreenshots/01_project_gallery.png",
+      "source": "../../../../../work/clearcut-final-home.png",
+      "sourceSha256": "cb68b6941d3d2626d94696ab565814097c7457e516c14ddd3c2b950405e8b6ea",
+      "sourceType": "device-capture",
+      "transform": "center-crop",
+      "width": 1080
+    },
+    {
+      "altText": "Editor timeline capture",
+      "caption": "Preview, editing tools, and multi-track timeline captured from the running app.",
+      "height": 1920,
+      "path": "phoneScreenshots/02_editor_timeline.png",
+      "source": "../../../../../work/clearcut-final-editor.png",
+      "sourceSha256": "d979371790381dfbb440e039e4d722a64166131e7ad5d205d1f3ffbfef5179b1",
+      "sourceType": "device-capture",
+      "transform": "center-crop",
+      "width": 1080
+    },
+    {
+      "altText": "Export settings capture",
+      "caption": "Export confidence and platform settings captured from the running app.",
+      "height": 1920,
+      "path": "phoneScreenshots/03_export_confidence.png",
+      "source": "../../../../../work/clearcut-final-export.png",
+      "sourceSha256": "7e1ca0693646bfd825e2b490824d0c7b7cc5af060a2d0df4757ef8811c80e3d4",
+      "sourceType": "device-capture",
+      "transform": "center-crop",
+      "width": 1080
+    },
+    {
+      "altText": "Settings capture",
+      "caption": "Settings and model controls captured from the running app.",
+      "height": 1920,
+      "path": "phoneScreenshots/04_privacy_models.png",
+      "source": "../../../../../work/clearcut-final-settings.png",
+      "sourceSha256": "f6ccb9b97a08910b724f8cf88221a1e1778b32b79058b72b4338061795b019b3",
+      "sourceType": "device-capture",
+      "transform": "center-crop",
+      "width": 1080
+    },
+    {
+      "altText": "Editor capture",
+      "caption": "Editor timeline captured from the running app and formatted for the landscape listing slot.",
+      "height": 1080,
+      "path": "tenInchScreenshots/01_tablet_editor.png",
+      "source": "../../../../../work/clearcut-final-editor.png",
+      "sourceSha256": "d979371790381dfbb440e039e4d722a64166131e7ad5d205d1f3ffbfef5179b1",
+      "sourceType": "device-capture",
+      "transform": "rotate-90-and-center-crop",
+      "width": 1920
+    },
+    {
+      "altText": "Media import capture",
+      "caption": "Media import workflow captured from the running app and formatted for the landscape listing slot.",
+      "height": 1080,
+      "path": "tenInchScreenshots/02_media_manager.png",
+      "source": "../../../../../work/cleancut-pass3-media-picker.png",
+      "sourceSha256": "0756b7d3ac4ccaae403417d6de5f54c1e39566228233122b2082c4e6cd1943ed",
+      "sourceType": "device-capture",
+      "transform": "rotate-90-and-center-crop",
+      "width": 1920
+    },
+    {
+      "altText": "Model controls capture",
+      "caption": "Model controls captured from the running app and formatted for the landscape listing slot.",
+      "height": 1080,
+      "path": "tenInchScreenshots/03_captions_ai.png",
+      "source": "../../../../../work/clearcut-final-settings.png",
+      "sourceSha256": "f6ccb9b97a08910b724f8cf88221a1e1778b32b79058b72b4338061795b019b3",
+      "sourceType": "device-capture",
+      "transform": "rotate-90-and-center-crop",
+      "width": 1920
+    },
+    {
+      "altText": "Export review capture",
+      "caption": "Export review captured from the running app and formatted for the landscape listing slot.",
+      "height": 1080,
+      "path": "tenInchScreenshots/04_export_review.png",
+      "source": "../../../../../work/clearcut-final-export.png",
+      "sourceSha256": "7e1ca0693646bfd825e2b490824d0c7b7cc5af060a2d0df4757ef8811c80e3d4",
+      "sourceType": "device-capture",
+      "transform": "rotate-90-and-center-crop",
+      "width": 1920
+    }
+  ],
+  "schema": "com.clearcut.play-listing-assets.v1",
+  "updated": "2026-08-11"
+}

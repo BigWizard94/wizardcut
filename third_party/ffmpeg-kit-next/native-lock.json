@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 2,
+  "artifact": {
+    "path": "third_party/ffmpeg-kit-next/ffmpeg-kit-next-8.1.0.aar",
+    "size": 62247665,
+    "sha256": "7971240aff84ce59a4ab28400bb4af59d24c20ce68c25525d41d910246ccff62",
+    "pomPath": "third_party/ffmpeg-kit-next/ffmpeg-kit-next-8.1.0.pom",
+    "pomSize": 669,
+    "pomSha256": "1b2f22bab50ff6abae874c42b335857d0ca23a318773369a77933261a25e731b"
+  },
+  "source": {
+    "repository": "https://github.com/arthenica/ffmpeg-kit-next",
+    "commit": "3e223118e6e8fb6208693ecf3952e77cd096f587",
+    "ffmpegRevision": "38b88335f99e76ed89ff3c93f877fdefce736c13",
+    "ffmpegVersion": "8.1.2",
+    "securityPatch": "third_party/ffmpeg-kit-next/clearcut-security.patch",
+    "securityPatchSha256": "0433ae68f6c8c78c35fc81eb7e2747fa27c513af4d6b97a423603c9132d41965",
+    "builtAt": "2026-08-02T00:00:00Z",
+    "reviewUntil": "2026-10-31"
+  },
+  "build": {
+    "command": "./nix-android.sh -p android-r27d --enable-libass --enable-libjxl --enable-android-media-codec --enable-android-zlib --enable-openh264 --jobs=8",
+    "androidNdk": "27.3.13750724",
+    "androidApi": 24,
+    "abis": ["armeabi-v7a", "armeabi-v7a-neon", "arm64-v8a", "x86", "x86_64"],
+    "license": "LGPL-3.0-or-later"
+  },
+  "components": [
+    {
+      "name": "ffmpeg-kit-next",
+      "version": "8.1.0",
+      "commit": "3e223118e6e8fb6208693ecf3952e77cd096f587",
+      "purl": "pkg:github/arthenica/ffmpeg-kit-next@3e223118e6e8fb6208693ecf3952e77cd096f587",
+      "license": "LGPL-3.0-or-later"
+    },
+    {
+      "name": "FFmpeg",
+      "version": "8.1.2",
+      "commit": "38b88335f99e76ed89ff3c93f877fdefce736c13",
+      "purl": "pkg:generic/ffmpeg@8.1.2",
+      "license": "LGPL-3.0-or-later"
+    },
+    {
+      "name": "OpenH264",
+      "version": "2.3.1",
+      "commit": "0a48f4d2e9be2abb4fb01b4c3be83cf44ce91a6e",
+      "purl": "pkg:github/cisco/openh264@0a48f4d2e9be2abb4fb01b4c3be83cf44ce91a6e",
+      "license": "BSD-2-Clause"
+    },
+    {
+      "name": "libass",
+      "version": "0.17.4",
+      "commit": "bbb3c7f1570a4a021e52683f3fbdf74fe492ae84",
+      "purl": "pkg:generic/libass@0.17.4",
+      "license": "ISC"
+    },
+    {
+      "name": "cpu-features",
+      "version": "0.11.0",
+      "commit": "81d13c49649f0714dd41fb56bb246398b6584085",
+      "purl": "pkg:github/google/cpu_features@81d13c49649f0714dd41fb56bb246398b6584085",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "expat",
+      "version": "2.8.1",
+      "commit": "c7ffbf3879f6aef7a7b020ef84ddb4ee00222b19",
+      "purl": "pkg:github/libexpat/libexpat@c7ffbf3879f6aef7a7b020ef84ddb4ee00222b19",
+      "license": "MIT"
+    },
+    {
+      "name": "fontconfig",
+      "version": "2.18.1",
+      "commit": "d87ec67db56518e9e9c36ff38f151dfc9b728b2e",
+      "purl": "pkg:github/arthenica/fontconfig@d87ec67db56518e9e9c36ff38f151dfc9b728b2e",
+      "license": "MIT"
+    },
+    {
+      "name": "freetype",
+      "version": "2.14.3",
+      "commit": "0a0221a1347e2f1e07c395263540026e9a0aa7c7",
+      "purl": "pkg:github/freetype/freetype@0a0221a1347e2f1e07c395263540026e9a0aa7c7",
+      "license": "FTL"
+    },
+    {
+      "name": "fribidi",
+      "version": "1.0.16",
+      "commit": "68162babff4f39c4e2dc164a5e825af93bda9983",
+      "purl": "pkg:github/fribidi/fribidi@68162babff4f39c4e2dc164a5e825af93bda9983",
+      "license": "LGPL-2.1-or-later"
+    },
+    {
+      "name": "harfbuzz",
+      "version": "14.2.1",
+      "commit": "56feae4035bdd48f62ba2b8d8c16232d4d89b3a4",
+      "purl": "pkg:github/harfbuzz/harfbuzz@56feae4035bdd48f62ba2b8d8c16232d4d89b3a4",
+      "license": "MIT"
+    },
+    {
+      "name": "libiconv",
+      "version": "1.17",
+      "commit": "4b9c27bec873392533dd3ef309cd62962a644e18",
+      "purl": "pkg:github/arthenica/libiconv@4b9c27bec873392533dd3ef309cd62962a644e18",
+      "license": "LGPL-2.1-or-later"
+    },
+    {
+      "name": "libjxl",
+      "version": "0.11.2",
+      "commit": "332feb17d17311c748445f7ee75c4fb55cc38530",
+      "purl": "pkg:github/libjxl/libjxl@332feb17d17311c748445f7ee75c4fb55cc38530",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "libpng",
+      "version": "1.6.58",
+      "commit": "3061454d980de7d53608f594194cfac722721d2a",
+      "purl": "pkg:github/glennrp/libpng@3061454d980de7d53608f594194cfac722721d2a",
+      "license": "Libpng"
+    },
+    {
+      "name": "libuuid",
+      "version": "1.0.3",
+      "commit": "16cb58d558844045f217d4ee416f931fc1b03794",
+      "purl": "pkg:github/arthenica/libuuid@16cb58d558844045f217d4ee416f931fc1b03794",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "Android NDK libc++",
+      "version": "27.3.13750724",
+      "commit": "NOASSERTION",
+      "purl": "pkg:generic/android-ndk-libcxx@27.3.13750724",
+      "license": "Apache-2.0-with-LLVM-exception"
+    }
+  ],
+  "security": {
+    "profile": "clearcut-disabled-format-surface",
+    "reviewUntil": "2026-10-31",
+    "disabledComponents": [
+      "vobsub_demuxer",
+      "tdsc_decoder",
+      "mace6_decoder",
+      "adpcm_adx_decoder",
+      "adx_demuxer",
+      "aax_demuxer",
+      "png_encoder",
+      "apng_encoder",
+      "rasc_decoder",
+      "iamf_demuxer",
+      "zlib_decoder"
+    ],
+    "requiredAdvisories": [
+      "CVE-2026-64830",
+      "CVE-2026-65703",
+      "CVE-2026-66039",
+      "CVE-2026-64835",
+      "CVE-2026-66040",
+      "CVE-2026-58049",
+      "CVE-2026-12706",
+      "CVE-2026-66037",
+      "CVE-2026-66038",
+      "CVE-2026-64832"
+    ],
+    "reachability": {
+      "CVE-2026-64832": {
+        "status": "not_reachable",
+        "requiredAbsentBuildFlags": [
+          "--enable-nvdec",
+          "--enable-cuda",
+          "--enable-cuda-nvcc"
+        ],
+        "reviewedOn": "2026-08-12",
+        "evidence": "The shipped Android recipe enables MediaCodec decoding but contains no CUDA or NVDEC configure flag; the advisory's libavcodec/nvdec.c path is not built into this artifact."
+      }
+    }
+  },
+  "advisories": [
+    {
+      "id": "CVE-2026-8461",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "fixed",
+      "fixedVersion": "8.1.2",
+      "rationale": "The shipped FFmpeg revision is 8.1.2, which contains the upstream fix.",
+      "reviewUntil": "2027-07-12",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-8461",
+      "disabledComponents": []
+    },
+    {
+      "id": "CVE-2024-36617",
+      "component": "FFmpeg",
+      "severity": "MEDIUM",
+      "status": "fixed",
+      "fixedVersion": "6.1.2",
+      "rationale": "The shipped FFmpeg revision is newer than the fixed version.",
+      "reviewUntil": "2027-07-12",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-36617",
+      "disabledComponents": []
+    },
+    {
+      "id": "CVE-2026-30999",
+      "component": "FFmpeg",
+      "severity": "UNKNOWN",
+      "status": "not_affected",
+      "fixedVersion": "8.1.2",
+      "rationale": "The current FFmpeg security review found no affected reachable component in the shipped profile.",
+      "reviewUntil": "2027-07-12",
+      "url": "https://ffmpeg.org/security.html",
+      "disabledComponents": []
+    },
+    {
+      "id": "CVE-2026-64830",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The VobSub demuxer is disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-64830",
+      "disabledComponents": ["vobsub_demuxer"]
+    },
+    {
+      "id": "CVE-2026-65703",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The TDSC decoder is disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-65703",
+      "disabledComponents": ["tdsc_decoder"]
+    },
+    {
+      "id": "CVE-2026-66039",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The MACE6 decoder is disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-66039",
+      "disabledComponents": ["mace6_decoder"]
+    },
+    {
+      "id": "CVE-2026-64835",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The ADX decoder and ADX/AAX demuxers are disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-64835",
+      "disabledComponents": ["adpcm_adx_decoder", "adx_demuxer", "aax_demuxer"]
+    },
+    {
+      "id": "CVE-2026-66040",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The PNG and APNG encoders are disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-66040",
+      "disabledComponents": ["png_encoder", "apng_encoder"]
+    },
+    {
+      "id": "CVE-2026-58049",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The RASC decoder is disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-58049",
+      "disabledComponents": ["rasc_decoder"]
+    },
+    {
+      "id": "CVE-2026-12706",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The RASC decoder is disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-12706",
+      "disabledComponents": ["rasc_decoder"]
+    },
+    {
+      "id": "CVE-2026-66037",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The IAMF demuxer is disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-66037",
+      "disabledComponents": ["iamf_demuxer"]
+    },
+    {
+      "id": "CVE-2026-66038",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The ZLIB decoder used by the LCL path is disabled in the ClearCut security profile.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-66038",
+      "disabledComponents": ["zlib_decoder"]
+    },
+    {
+      "id": "CVE-2026-64832",
+      "component": "FFmpeg",
+      "severity": "HIGH",
+      "status": "not_affected",
+      "rationale": "The shipped Android artifact does not build the NVIDIA NVDEC hardware-decoder path; the exact absent configure flags and review evidence are recorded under security.reachability.",
+      "reviewUntil": "2026-10-31",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-64832",
+      "disabledComponents": []
+    }
+  ]
+}

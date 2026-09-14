@@ -1,0 +1,2804 @@
+package com.novacut.editor.ui.export
+
+import com.novacut.editor.ui.theme.ClearCutAccents
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.GifBox
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LayersClear
+import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
+import com.novacut.editor.R
+import com.novacut.editor.engine.AiUsageLedger
+import com.novacut.editor.engine.EncoderCapabilityProbe
+import com.novacut.editor.engine.ExportColorConfidenceEngine
+import com.novacut.editor.engine.ExportHistoryEntry
+import com.novacut.editor.engine.ExportHistoryStatus
+import com.novacut.editor.engine.ExportState
+import com.novacut.editor.engine.ExportStoragePolicy
+import com.novacut.editor.engine.HdrOverlayAssetInspector
+import com.novacut.editor.engine.HdrOverlayPolicy
+import com.novacut.editor.engine.HdrOverlaySummary
+import com.novacut.editor.engine.CodecInstanceBudget
+import com.novacut.editor.engine.Media3TrimOptimizationPolicy
+import android.net.Uri
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import com.novacut.editor.engine.ProjectColorPolicy
+import com.novacut.editor.engine.SmartRenderEngine
+import com.novacut.editor.model.AspectRatio
+import com.novacut.editor.model.AudioCodec
+import com.novacut.editor.model.ExportConfig
+import com.novacut.editor.model.ExportQuality
+import com.novacut.editor.model.FrameCaptureFormat
+import com.novacut.editor.model.ImageOverlay
+import com.novacut.editor.model.Resolution
+import com.novacut.editor.model.SubtitleFormat
+import com.novacut.editor.model.TargetSizePreset
+import com.novacut.editor.model.TimelineExportRange
+import com.novacut.editor.model.TimelineTimebase
+import com.novacut.editor.model.TextOverlay
+import com.novacut.editor.model.VideoCodec
+import com.novacut.editor.model.Watermark
+import com.novacut.editor.model.WatermarkPosition
+import com.novacut.editor.ui.ClearCutTestTags
+import com.novacut.editor.ui.theme.LocalClearCutColors
+import com.novacut.editor.ui.theme.Motion
+import com.novacut.editor.ui.theme.ClearCutChromeIconButton
+import com.novacut.editor.ui.theme.ClearCutDialogIcon
+import com.novacut.editor.ui.theme.ClearCutPrimaryButton
+import com.novacut.editor.ui.theme.ClearCutSecondaryButton
+import com.novacut.editor.ui.theme.Radius
+import com.novacut.editor.ui.theme.Spacing
+import com.novacut.editor.ui.theme.TouchTarget
+import java.text.DateFormat
+import java.util.Date
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+
+enum class ExportSheetPresentation {
+    BOTTOM_SHEET,
+    EMBEDDED_PANE
+}
+
+internal fun exportElapsedMs(nowMs: Long, exportStartTimeMs: Long): Long {
+    if (exportStartTimeMs <= 0L) return 0L
+    return (nowMs - exportStartTimeMs).coerceAtLeast(0L)
+}
+
+internal fun exportEtaRemainingMs(elapsedMs: Long, exportProgress: Float): Long? {
+    if (exportProgress <= 0.05f || elapsedMs <= 2_000L) return null
+    val totalEstimateMs = (elapsedMs / exportProgress).toLong()
+    return (totalEstimateMs - elapsedMs).coerceAtLeast(0L)
+}
+
+@Composable
+private fun trimOptimizationDisclosureText(
+    disclosure: Media3TrimOptimizationPolicy.Disclosure,
+): String {
+    if (disclosure.strategy == Media3TrimOptimizationPolicy.Strategy.FULL_TRANSCODE) {
+        val reason = when (disclosure.reason) {
+            Media3TrimOptimizationPolicy.Reason.ELIGIBLE ->
+                stringResource(R.string.export_trim_reason_eligible)
+            Media3TrimOptimizationPolicy.Reason.NOT_MP4_OUTPUT ->
+                stringResource(R.string.export_trim_reason_not_mp4_output)
+            Media3TrimOptimizationPolicy.Reason.NOT_MP4_INPUT ->
+                stringResource(R.string.export_trim_reason_not_mp4_input)
+            Media3TrimOptimizationPolicy.Reason.NOT_SINGLE_VIDEO_ASSET ->
+                stringResource(R.string.export_trim_reason_not_single_video_asset)
+            Media3TrimOptimizationPolicy.Reason.NO_TRIM ->
+                stringResource(R.string.export_trim_reason_no_trim)
+            Media3TrimOptimizationPolicy.Reason.TIMELINE_NOT_CONTINUOUS ->
+                stringResource(R.string.export_trim_reason_timeline_not_continuous)
+            Media3TrimOptimizationPolicy.Reason.SPECIAL_EXPORT ->
+                stringResource(R.string.export_trim_reason_special_export)
+            Media3TrimOptimizationPolicy.Reason.OVERLAYS_OR_AUTOMATION ->
+                stringResource(R.string.export_trim_reason_overlays_or_automation)
+            Media3TrimOptimizationPolicy.Reason.SPEED_CHANGE ->
+                stringResource(R.string.export_trim_reason_speed_change)
+            Media3TrimOptimizationPolicy.Reason.AUDIO_EDIT ->
+                stringResource(R.string.export_trim_reason_audio_edit)
+            Media3TrimOptimizationPolicy.Reason.VIDEO_EDIT ->
+                stringResource(R.string.export_trim_reason_video_edit)
+            Media3TrimOptimizationPolicy.Reason.UNSUPPORTED_ROTATION ->
+                stringResource(R.string.export_trim_reason_unsupported_rotation)
+            Media3TrimOptimizationPolicy.Reason.RESUME_REQUESTED ->
+                stringResource(R.string.export_trim_reason_resume_requested)
+        }
+        return stringResource(R.string.export_trim_full_render_reason, reason)
+    }
+
+    return when (disclosure.outcome) {
+        null -> stringResource(R.string.export_trim_smart_pending)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.NONE ->
+            stringResource(R.string.export_trim_result_none)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.SUCCEEDED ->
+            stringResource(R.string.export_trim_result_succeeded)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.ABANDONED_KEYFRAME_PLACEMENT_OPTIMAL_FOR_TRIM ->
+            stringResource(R.string.export_trim_result_keyframes_optimal)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.ABANDONED_TRIM_AND_TRANSCODING_TRANSFORMATION_REQUESTED ->
+            stringResource(R.string.export_trim_result_transcoding_requested)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.ABANDONED_OTHER ->
+            stringResource(R.string.export_trim_result_abandoned_other)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.FAILED_EXTRACTION_FAILED ->
+            stringResource(R.string.export_trim_result_extraction_failed)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.FAILED_FORMAT_MISMATCH ->
+            stringResource(R.string.export_trim_result_format_mismatch)
+        Media3TrimOptimizationPolicy.OptimizationOutcome.UNKNOWN ->
+            stringResource(R.string.export_trim_result_unknown)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ExportSheet(
+    config: ExportConfig,
+    projectName: String = "",
+    exportState: ExportState,
+    exportProgress: Float,
+    modifier: Modifier = Modifier,
+    aspectRatio: AspectRatio = AspectRatio.RATIO_16_9,
+    errorMessage: String? = null,
+    exportWarning: String? = null,
+    trimOptimizationDisclosure: Media3TrimOptimizationPolicy.Disclosure? = null,
+    exportStartTime: Long = 0L,
+    totalDurationMs: Long = 0L,
+    playheadMs: Long = 0L,
+    timelineTimebase: TimelineTimebase = TimelineTimebase(30),
+    smartRenderSummary: SmartRenderEngine.SmartRenderSummary? = null,
+    sourceHdrSummary: ExportColorConfidenceEngine.SourceHdrSummary = ExportColorConfidenceEngine.SourceHdrSummary(),
+    projectColorPolicy: ProjectColorPolicy = ProjectColorPolicy.DEFAULT,
+    hasTextOverlays: Boolean = false,
+    hasImageOverlays: Boolean = false,
+    textOverlays: List<TextOverlay> = emptyList(),
+    imageOverlays: List<ImageOverlay> = emptyList(),
+    aiUsageLedger: List<AiUsageLedger.Entry> = emptyList(),
+    exportHistory: List<ExportHistoryEntry> = emptyList(),
+    encoderName: String? = null,
+    stallWarning: Boolean = false,
+    lastExportedFilePath: String? = null,
+    /**
+     * Copyable failure report for the last failed export. Present means the error card
+     * can hand the user something a triager can actually read.
+     */
+    incidentReport: String? = null,
+    suggestedResolution: Resolution? = null,
+    suggestedFps: Int? = null,
+    presentation: ExportSheetPresentation = ExportSheetPresentation.BOTTOM_SHEET,
+    onConfigChanged: (ExportConfig) -> Unit,
+    onStartExport: () -> Unit,
+    onShare: () -> Unit = {},
+    onSaveToGallery: () -> Unit = {},
+    onCancel: () -> Unit = {},
+    onResumeExport: (ExportHistoryEntry) -> Unit = {},
+    onExportOtio: () -> Unit = {},
+    onExportFcpxml: () -> Unit = {},
+    onExportEditDecisionJson: () -> Unit = {},
+    onExportSubtitles: (SubtitleFormat) -> Unit = {},
+    onCaptureFrame: () -> Unit = {},
+    onClearAiUsageLedger: () -> Unit = {},
+    onClose: () -> Unit
+) {
+    var timingNowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(exportState, exportStartTime) {
+        timingNowMs = System.currentTimeMillis()
+        if (exportState == ExportState.EXPORTING && exportStartTime > 0L) {
+            while (true) {
+                delay(1_000L)
+                timingNowMs = System.currentTimeMillis()
+            }
+        }
+    }
+
+    val semanticColors = LocalClearCutColors.current
+    val availableCodecs = remember { ExportConfig.getAvailableCodecs() }
+    val outputAspectRatio = config.outputAspectRatio(aspectRatio)
+    val (width, height) = config.resolution.forAspect(outputAspectRatio)
+    val resolvedRange = remember(config.timelineRange, timelineTimebase, totalDurationMs) {
+        config.timelineRange?.resolve(timelineTimebase, totalDurationMs)
+    }
+    val exportDurationMs = resolvedRange?.durationMs ?: totalDurationMs
+    val maxFrameExclusive = remember(timelineTimebase, totalDurationMs) {
+        timelineTimebase.frameIndexAtOrAfter(totalDurationMs.coerceAtLeast(0L))
+    }
+    val playheadFrame = timelineTimebase.frameIndexAt(playheadMs)
+        .coerceIn(0L, maxFrameExclusive)
+    val rangeReady = config.timelineRange == null || resolvedRange != null
+    val rangeDescription = when {
+        config.timelineRange == null -> stringResource(R.string.export_range_whole_timeline)
+        resolvedRange != null -> stringResource(
+            R.string.export_range_summary,
+            timelineTimebase.formatTimecode(resolvedRange.startMs),
+            timelineTimebase.formatTimecode(resolvedRange.endMs),
+            formatEtaSeconds((resolvedRange.durationMs / 1000L).coerceAtLeast(0L)),
+        )
+        else -> stringResource(R.string.export_range_incomplete)
+    }
+    val effectiveConfig = remember(config, exportDurationMs) {
+        if (config.targetSizeBytes != null) config.resolveTargetSize(exportDurationMs) else config
+    }
+    val estimatedSize = remember(effectiveConfig, exportDurationMs) {
+        estimateExportSize(exportDurationMs, effectiveConfig)
+    }
+    val videoModeEnabled = !config.exportAudioOnly && !config.exportStemsOnly && !config.exportAsGif && !config.captureFrameOnly && !config.exportAsContactSheet
+    val audioCodecVisible = !config.captureFrameOnly && !config.exportAsGif && !config.exportAsContactSheet
+    val aiUsageEntries = remember(aiUsageLedger) {
+        AiUsageLedger.mergeOverlaps(aiUsageLedger)
+    }
+    val hasAiUsage = aiUsageEntries.isNotEmpty()
+    val hasDisclosureBearingAiUsage = remember(aiUsageEntries) {
+        AiUsageLedger.aggregateSeverity(aiUsageEntries) != AiUsageLedger.Severity.INTERNAL_ONLY
+    }
+    val aiDisclosureSummary = remember(aiUsageEntries) {
+        AiUsageLedger.summaryLine(aiUsageEntries)
+    }
+    var showClearAiLedgerConfirm by remember { mutableStateOf(false) }
+    val hdrProfileSupport = remember(effectiveConfig.codec) {
+        EncoderCapabilityProbe.queryHdrProfiles(effectiveConfig.codec)
+    }
+    val codecCanCarryHdr = effectiveConfig.codec != VideoCodec.H264 && hdrProfileSupport.canPreserveHdr
+    val fallbackHdrOverlaySummary = remember(
+        hasTextOverlays,
+        hasImageOverlays,
+        effectiveConfig.watermark,
+    ) {
+        HdrOverlaySummary(
+            textOverlayCount = if (hasTextOverlays) 1 else 0,
+            imageOverlayCount = if (hasImageOverlays) 1 else 0,
+            watermarkPresent = effectiveConfig.watermark != null,
+        )
+    }
+    val context = LocalContext.current
+    val hdrOverlaySummary by produceState(
+        initialValue = fallbackHdrOverlaySummary,
+        textOverlays,
+        imageOverlays,
+        effectiveConfig.watermark,
+        hasTextOverlays,
+        hasImageOverlays,
+    ) {
+        // Keep compatibility with callers that only provide the old boolean
+        // summary. The editor passes the model lists below, which lets the
+        // inspector distinguish gain-mapped stills from animated/SDR assets.
+        if ((hasTextOverlays && textOverlays.isEmpty()) ||
+            (hasImageOverlays && imageOverlays.isEmpty())
+        ) {
+            value = fallbackHdrOverlaySummary
+            return@produceState
+        }
+        value = withContext(Dispatchers.IO) {
+            HdrOverlayAssetInspector.inspect(
+                context = context,
+                textOverlays = textOverlays,
+                imageOverlays = imageOverlays,
+                watermark = effectiveConfig.watermark,
+            )
+        }
+    }
+    val hdrOverlayDecision = remember(
+        effectiveConfig.hdr10PlusMetadata,
+        effectiveConfig.codec,
+        hdrOverlaySummary,
+    ) {
+        HdrOverlayPolicy.evaluate(
+            hdrRequested = effectiveConfig.hdr10PlusMetadata,
+            codec = effectiveConfig.codec,
+            overlays = hdrOverlaySummary,
+        )
+    }
+    val deviceTierHint = remember {
+        EncoderCapabilityProbe.deviceTierHint()
+    }
+    val hdrEncodeSupport = remember(hdrProfileSupport) {
+        ExportColorConfidenceEngine.HdrEncodeSupport(
+            supportedFormats = hdrProfileSupport.supportedFormats.map { it.displayName }.toSet(),
+            maxWidth = hdrProfileSupport.maxWidth,
+            maxHeight = hdrProfileSupport.maxHeight,
+            maxBitrate = hdrProfileSupport.maxBitrate,
+            featureSupport = hdrProfileSupport.featureSupport,
+        )
+    }
+    val colorConfidenceReport = remember(
+        effectiveConfig,
+        width,
+        height,
+        hdrEncodeSupport,
+        sourceHdrSummary,
+        projectColorPolicy,
+        hdrOverlaySummary,
+    ) {
+        ExportColorConfidenceEngine.analyze(
+            config = effectiveConfig,
+            width = width,
+            height = height,
+            hdrSupport = hdrEncodeSupport,
+            sourceSummary = sourceHdrSummary,
+            projectColorPolicy = projectColorPolicy,
+            overlaySummary = hdrOverlaySummary,
+        )
+    }
+    val trimOptimizationLine = if (trimOptimizationDisclosure != null) {
+        trimOptimizationDisclosureText(trimOptimizationDisclosure)
+    } else {
+        null
+    }
+
+    val bitrateDescription = when {
+        effectiveConfig.videoBitrate >= 40_000_000 -> stringResource(R.string.export_studio_quality)
+        effectiveConfig.videoBitrate >= 15_000_000 -> stringResource(R.string.export_great_for_youtube)
+        effectiveConfig.videoBitrate >= 6_000_000 -> stringResource(R.string.export_good_for_sharing)
+        else -> stringResource(R.string.export_compact_file_size)
+    }
+
+    val summaryHeadline = when {
+        config.exportAsContactSheet -> stringResource(R.string.export_contact_sheet_summary, config.contactSheetColumns)
+        config.captureFrameOnly -> stringResource(R.string.export_capture_summary_format, width, height)
+        config.exportAsGif -> stringResource(R.string.export_gif_summary_format, config.gifMaxWidth)
+        config.exportStemsOnly -> stringResource(R.string.export_stems_summary)
+        config.exportAudioOnly -> stringResource(R.string.export_audio_summary)
+        else -> stringResource(R.string.export_resolution_format, width, height, config.frameRate)
+    }
+
+    val summaryDetail = when {
+        config.captureFrameOnly -> stringResource(R.string.export_capture_details_format, localizedFrameCaptureFormat(config.captureFormat))
+        config.exportAsGif -> stringResource(R.string.export_gif_details_format, config.gifMaxWidth, config.gifFrameRate)
+        config.exportStemsOnly -> stringResource(R.string.export_stems_details_format, config.audioCodec.label, config.audioBitrate / 1000)
+        config.exportAudioOnly -> stringResource(R.string.export_audio_details_format, config.audioCodec.label, config.audioBitrate / 1000)
+        else -> {
+            val bitrate = stringResource(
+                R.string.export_bitrate_format,
+                effectiveConfig.videoBitrate / 1_000_000,
+                bitrateDescription,
+            )
+            if (estimatedSize != null) {
+                stringResource(R.string.export_bitrate_estimated_size, bitrate, estimatedSize)
+            } else bitrate
+        }
+    }
+
+    val outputDetailsPrimary = when {
+        config.captureFrameOnly -> stringResource(R.string.export_capture_details_format, localizedFrameCaptureFormat(config.captureFormat))
+        config.exportAsGif -> stringResource(R.string.export_gif_details_format, config.gifMaxWidth, config.gifFrameRate)
+        config.exportStemsOnly -> stringResource(R.string.export_stems_details_format, config.audioCodec.label, config.audioBitrate / 1000)
+        config.exportAudioOnly -> stringResource(R.string.export_audio_details_format, config.audioCodec.label, config.audioBitrate / 1000)
+        else -> stringResource(R.string.export_codec_quality_format, config.codec.label, localizedExportQuality(config.quality))
+    }
+
+    val outputDetailsSecondary = when {
+        config.captureFrameOnly -> stringResource(R.string.export_capture_summary_format, width, height)
+        config.exportAsGif -> stringResource(R.string.export_gif_summary_format, config.gifMaxWidth)
+        config.exportStemsOnly -> stringResource(R.string.export_audio_codec)
+        config.exportAudioOnly -> stringResource(R.string.export_audio_codec)
+        else -> stringResource(R.string.export_resolution_format, width, height, config.frameRate)
+    }
+
+    val primaryButtonLabel = when {
+        config.exportAsContactSheet -> stringResource(R.string.export_contact_sheet_button)
+        config.exportAsGif -> stringResource(R.string.export_gif_button)
+        config.captureFrameOnly -> stringResource(R.string.export_capture_button)
+        config.exportStemsOnly -> stringResource(R.string.export_stems_button)
+        config.exportAudioOnly -> stringResource(R.string.export_audio_button)
+        else -> stringResource(R.string.export_video_button)
+    }
+
+    val primaryButtonIcon = when {
+        config.exportAudioOnly -> Icons.Default.GraphicEq
+        config.exportStemsOnly -> Icons.Default.Layers
+        config.exportAsGif -> Icons.Default.GifBox
+        config.captureFrameOnly -> Icons.Default.Image
+        config.exportAsContactSheet -> Icons.Default.ViewModule
+        else -> Icons.Default.FileUpload
+    }
+    val containerShape = when (presentation) {
+        ExportSheetPresentation.BOTTOM_SHEET -> RoundedCornerShape(topStart = Radius.xxl, topEnd = Radius.xxl)
+        ExportSheetPresentation.EMBEDDED_PANE -> RoundedCornerShape(topStart = Radius.xxl, bottomStart = Radius.xxl)
+    }
+
+    if (showClearAiLedgerConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearAiLedgerConfirm = false },
+            icon = {
+                ClearCutDialogIcon(
+                    icon = Icons.Default.AutoAwesome,
+                    accent = ClearCutAccents.Mauve
+                )
+            },
+            title = { Text(stringResource(R.string.export_ai_ledger_clear_title)) },
+            text = {
+                Text(stringResource(R.string.export_ai_ledger_clear_message))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onClearAiUsageLedger()
+                        showClearAiLedgerConfirm = false
+                    }
+                ) {
+                    Text(stringResource(R.string.export_ai_ledger_clear_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAiLedgerConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(ClearCutTestTags.EXPORT_SHEET)
+            .background(semanticColors.background, containerShape)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.lg, vertical = 14.dp)
+    ) {
+        if (presentation == ExportSheetPresentation.BOTTOM_SHEET) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(36.dp)
+                    .height(3.dp)
+                    .background(semanticColors.surfaceHigh.copy(alpha = 0.55f), RoundedCornerShape(Radius.sm))
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                stringResource(R.string.export_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (exportState != ExportState.EXPORTING) {
+                ClearCutChromeIconButton(
+                    icon = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.close),
+                    onClick = onClose,
+                    tint = semanticColors.text,
+                    containerColor = Color.Transparent,
+                    borderColor = Color.Transparent,
+                    modifier = Modifier.testTag(ClearCutTestTags.EXPORT_CLOSE),
+                    size = 40.dp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        if (exportState == ExportState.EXPORTING) {
+            val percent = (exportProgress * 100).toInt().coerceIn(0, 100)
+            val elapsedMs = exportElapsedMs(timingNowMs, exportStartTime)
+            val elapsedSeconds = (elapsedMs / 1000).toInt()
+            val elapsedLabel = "%d:%02d".format(elapsedSeconds / 60, elapsedSeconds % 60)
+            val etaLabel = exportEtaRemainingMs(elapsedMs, exportProgress)?.let { remainingMs ->
+                val remainingSeconds = (remainingMs / 1000).toInt()
+                stringResource(R.string.export_eta_remaining, "%d:%02d".format(remainingSeconds / 60, remainingSeconds % 60))
+            }
+
+            val encoderLine = encoderName?.let { stringResource(R.string.export_encoder_format, it) }
+            val stallLine = if (stallWarning) stringResource(R.string.export_stall_warning) else null
+            val warningLine = exportWarning?.takeIf { it.isNotBlank() }
+            val bodyParts = listOfNotNull(
+                stringResource(R.string.export_elapsed, elapsedLabel),
+                encoderLine,
+                stallLine,
+                warningLine,
+                trimOptimizationLine,
+            ).joinToString("\n")
+            val attentionNeeded = stallWarning || warningLine != null
+
+            ExportStateCard(
+                icon = if (attentionNeeded) Icons.Default.Warning else Icons.Default.FileUpload,
+                tint = if (attentionNeeded) ClearCutAccents.Yellow else ClearCutAccents.Mauve,
+                title = stringResource(R.string.export_exporting),
+                body = bodyParts,
+                progress = exportProgress,
+                progressLabel = stringResource(R.string.export_progress_percent, percent),
+                secondaryBody = etaLabel,
+                primaryLabel = stringResource(R.string.export_cancel),
+                onPrimary = onCancel,
+                primaryStyle = PrimaryStyle.Destructive
+            )
+            return
+        }
+
+        if (exportState == ExportState.COMPLETE) {
+            if (lastExportedFilePath != null) {
+                ExportPreviewPlayer(filePath = lastExportedFilePath)
+                Spacer(Modifier.height(Spacing.md))
+            }
+            val completionBody = listOfNotNull(
+                stringResource(R.string.export_subtitle),
+                exportWarning?.takeIf { it.isNotBlank() },
+                trimOptimizationLine,
+            ).joinToString("\n")
+            ExportStateCard(
+                icon = Icons.Default.CheckCircle,
+                tint = ClearCutAccents.Green,
+                title = stringResource(R.string.export_complete),
+                body = completionBody,
+                primaryLabel = stringResource(R.string.share),
+                onPrimary = onShare,
+                secondaryLabel = stringResource(R.string.export_save_to_gallery),
+                onSecondary = onSaveToGallery,
+                tertiaryLabel = stringResource(R.string.done),
+                onTertiary = onClose,
+                primaryStyle = PrimaryStyle.Filled
+            )
+            return
+        }
+
+        if (exportState == ExportState.CANCELLED) {
+            ExportStateCard(
+                icon = Icons.Default.Cancel,
+                tint = ClearCutAccents.Peach,
+                title = stringResource(R.string.export_cancelled),
+                body = stringResource(R.string.export_subtitle),
+                primaryLabel = stringResource(R.string.done),
+                onPrimary = onClose,
+                // "Done" after a user-initiated cancel is informational, not celebratory.
+                primaryStyle = PrimaryStyle.Quiet
+            )
+            return
+        }
+
+        if (exportState == ExportState.ERROR) {
+            val clipboard = LocalClipboardManager.current
+            val copyableIncidentReport = incidentReport?.takeIf { it.isNotBlank() }
+            var reportCopied by remember(copyableIncidentReport) { mutableStateOf(false) }
+            val latestFailureDiagnostic = exportHistory.firstOrNull {
+                it.status == ExportHistoryStatus.FAILED || it.status == ExportHistoryStatus.BLOCKED
+            }?.diagnosticSummary
+            ExportStateCard(
+                icon = Icons.Default.Error,
+                tint = ClearCutAccents.Red,
+                title = stringResource(R.string.export_failed),
+                body = errorMessage?.takeIf { it.isNotBlank() } ?: stringResource(R.string.export_error_unknown),
+                secondaryBody = latestFailureDiagnostic,
+                primaryLabel = stringResource(R.string.retry),
+                onPrimary = onStartExport,
+                secondaryLabel = stringResource(R.string.close),
+                onSecondary = onClose,
+                // The report the engine already built for exactly this failure. Without
+                // this the card could only say "check diagnostics" and give no way there.
+                tertiaryLabel = copyableIncidentReport?.let {
+                    stringResource(
+                        if (reportCopied) R.string.export_copy_report_done else R.string.export_copy_report
+                    )
+                },
+                onTertiary = copyableIncidentReport?.let { report ->
+                    {
+                        clipboard.setText(AnnotatedString(report))
+                        reportCopied = true
+                    }
+                },
+                primaryStyle = PrimaryStyle.Filled
+            )
+            return
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.xs, vertical = Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            Text(
+                text = config.platformPreset?.displayName ?: stringResource(R.string.export_delivery_summary),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.labelLarge
+            )
+            if (projectName.isNotBlank()) {
+                Text(
+                    text = projectName,
+                    color = semanticColors.text,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
+            Text(
+                text = summaryHeadline,
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleLarge
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = outputDetailsPrimary,
+                    color = ClearCutAccents.Sky,
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(18.dp)
+                        .background(semanticColors.cardStrokeStrong)
+                )
+                Text(
+                    text = outputAspectRatio.label,
+                    color = semanticColors.subtextStrong,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            Text(
+                text = summaryDetail,
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            HorizontalDivider(color = semanticColors.cardStroke)
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        ExportSectionCard(
+            title = stringResource(R.string.export_quick_presets),
+            description = null,
+            accent = ClearCutAccents.Green
+        ) {
+            ExportQuickPresetSelector(
+                config = config,
+                sourceAspectRatio = aspectRatio,
+                outputAspectRatio = outputAspectRatio,
+                onConfigChanged = onConfigChanged,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Spacing.md))
+
+        ExportSectionCard(
+            title = stringResource(R.string.export_output_details),
+            description = null,
+            accent = ClearCutAccents.Sky
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                ExportSummarySettingRow(
+                icon = Icons.Default.ViewModule,
+                label = stringResource(R.string.export_resolution),
+                value = config.resolution.label,
+                accent = ClearCutAccents.Sky,
+                onClick = {
+                    val options = Resolution.entries
+                    val next = options[(options.indexOf(config.resolution) + 1) % options.size]
+                    onConfigChanged(config.copy(resolution = next, platformPreset = null))
+                }
+            )
+                ExportSummarySettingRow(
+                icon = Icons.Default.Speed,
+                label = stringResource(R.string.export_frame_rate),
+                value = stringResource(R.string.export_fps_value, config.frameRate),
+                accent = ClearCutAccents.Mauve,
+                onClick = {
+                    val options = listOf(24, 30, 60)
+                    val next = options[(options.indexOf(config.frameRate).coerceAtLeast(0) + 1) % options.size]
+                    onConfigChanged(config.copy(frameRate = next, platformPreset = null))
+                }
+            )
+                ExportSummarySettingRow(
+                icon = Icons.Default.FileUpload,
+                label = stringResource(R.string.export_codec),
+                value = "MP4 · ${config.codec.label}",
+                accent = ClearCutAccents.Teal,
+                onClick = {
+                    val options = VideoCodec.entries.filter { it in availableCodecs }
+                    if (options.isNotEmpty()) {
+                        val next = options[(options.indexOf(config.codec).coerceAtLeast(0) + 1) % options.size]
+                        onConfigChanged(config.copy(codec = next, platformPreset = null))
+                    }
+                }
+            )
+                ExportSummarySettingRow(
+                icon = Icons.Default.GraphicEq,
+                label = stringResource(R.string.export_quality),
+                value = localizedExportQuality(config.quality),
+                accent = ClearCutAccents.Green,
+                onClick = {
+                    val options = ExportQuality.entries
+                    val next = options[(options.indexOf(config.quality) + 1) % options.size]
+                    onConfigChanged(config.copy(quality = next, platformPreset = null))
+                }
+            )
+                if (estimatedSize != null && videoModeEnabled) {
+                    Text(
+                        text = stringResource(R.string.export_estimated_size_format, estimatedSize),
+                        color = ClearCutAccents.Peach,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = Spacing.sm)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(Spacing.md))
+
+        ClearCutPrimaryButton(
+            text = primaryButtonLabel,
+            onClick = {
+                if (config.captureFrameOnly) {
+                    onCaptureFrame()
+                } else {
+                    onStartExport()
+                }
+            },
+            icon = primaryButtonIcon,
+            enabled = rangeReady,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .testTag(ClearCutTestTags.EXPORT_PRIMARY_ACTION)
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (!config.captureFrameOnly) {
+            ExportSectionCard(
+                title = stringResource(R.string.export_timeline_range),
+                description = stringResource(R.string.export_timeline_range_description),
+                accent = ClearCutAccents.Teal
+            ) {
+                Text(
+                    text = rangeDescription,
+                    color = if (rangeReady) semanticColors.subtext else ClearCutAccents.Yellow,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.export_range_current_frame,
+                        timelineTimebase.formatTimecode(timelineTimebase.timeMsAt(playheadFrame)),
+                    ),
+                    color = semanticColors.subtext,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        onClick = {
+                            onConfigChanged(
+                                config.copy(
+                                    timelineRange = TimelineExportRange(
+                                        startFrame = playheadFrame,
+                                        endFrameExclusive = config.timelineRange?.endFrameExclusive,
+                                    )
+                                )
+                            )
+                        },
+                        label = { Text(stringResource(R.string.export_range_set_start), style = MaterialTheme.typography.labelMedium) },
+                        selected = config.timelineRange?.startFrame == playheadFrame,
+                        colors = exportChipColors(ClearCutAccents.Teal),
+                    )
+                    FilterChip(
+                        onClick = {
+                            onConfigChanged(
+                                config.copy(
+                                    timelineRange = TimelineExportRange(
+                                        startFrame = config.timelineRange?.startFrame,
+                                        endFrameExclusive = playheadFrame,
+                                    )
+                                )
+                            )
+                        },
+                        label = { Text(stringResource(R.string.export_range_set_end), style = MaterialTheme.typography.labelMedium) },
+                        selected = config.timelineRange?.endFrameExclusive == playheadFrame,
+                        colors = exportChipColors(ClearCutAccents.Teal),
+                    )
+                    if (config.timelineRange != null) {
+                        FilterChip(
+                            onClick = { onConfigChanged(config.copy(timelineRange = null)) },
+                            label = { Text(stringResource(R.string.export_range_clear), style = MaterialTheme.typography.labelMedium) },
+                            selected = false,
+                            colors = exportChipColors(ClearCutAccents.Peach),
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.export_range_end_exclusive_note),
+                    color = semanticColors.subtext,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ExportSectionCard(
+            title = stringResource(R.string.export_special_outputs),
+            description = stringResource(R.string.export_special_outputs_description),
+            accent = ClearCutAccents.Mauve
+        ) {
+            ExportToggleRow(
+                icon = Icons.Default.GraphicEq,
+                title = stringResource(R.string.export_audio_only),
+                description = stringResource(R.string.export_audio_only_description),
+                checked = config.exportAudioOnly,
+                onCheckedChange = {
+                    onConfigChanged(
+                        config.copy(
+                            exportAudioOnly = it,
+                            exportStemsOnly = false,
+                            exportAsGif = false,
+                            captureFrameOnly = false,
+                            exportAsContactSheet = false
+                        )
+                    )
+                },
+                accent = ClearCutAccents.Peach
+            )
+
+            HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+            ExportToggleRow(
+                icon = Icons.Default.ClosedCaption,
+                title = stringResource(R.string.export_subtitles),
+                description = stringResource(R.string.export_subtitles_description),
+                checked = config.subtitleFormat != null,
+                onCheckedChange = {
+                    onConfigChanged(config.copy(subtitleFormat = if (it) SubtitleFormat.SRT else null))
+                },
+                accent = ClearCutAccents.Blue
+            )
+
+            if (config.subtitleFormat != null) {
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_subtitles),
+                    accent = ClearCutAccents.Blue
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SubtitleFormat.entries.forEach { format ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(subtitleFormat = format)) },
+                                label = { Text(format.displayName, style = MaterialTheme.typography.labelMedium) },
+                                selected = config.subtitleFormat == format,
+                                colors = exportChipColors(ClearCutAccents.Blue)
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+            ExportToggleRow(
+                icon = Icons.Default.Layers,
+                title = stringResource(R.string.export_stems),
+                description = stringResource(R.string.export_stems_description),
+                checked = config.exportStemsOnly,
+                onCheckedChange = {
+                    onConfigChanged(
+                        config.copy(
+                            exportStemsOnly = it,
+                            exportAudioOnly = false,
+                            exportAsGif = false,
+                            captureFrameOnly = false,
+                            exportAsContactSheet = false
+                        )
+                    )
+                },
+                accent = ClearCutAccents.Yellow
+            )
+
+            HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+            ExportToggleRow(
+                icon = Icons.AutoMirrored.Filled.Notes,
+                title = stringResource(R.string.export_chapter_markers),
+                description = stringResource(R.string.export_chapter_markers_description),
+                checked = config.includeChapterMarkers,
+                onCheckedChange = { onConfigChanged(config.copy(includeChapterMarkers = it)) },
+                accent = ClearCutAccents.Sapphire
+            )
+
+            if (videoModeEnabled) {
+                HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+                ExportToggleRow(
+                    icon = Icons.Default.AutoAwesome,
+                    title = stringResource(R.string.export_ai_use_disclose_title),
+                    description = if (hasAiUsage) {
+                        aiDisclosureSummary
+                    } else {
+                        stringResource(R.string.export_ai_use_empty)
+                    },
+                    checked = config.discloseAiUse && hasAiUsage,
+                    enabled = hasAiUsage,
+                    onCheckedChange = { checked ->
+                        onConfigChanged(
+                            config.copy(
+                                discloseAiUse = checked,
+                                writeAiUseSidecar = if (checked) true else config.writeAiUseSidecar
+                            )
+                        )
+                    },
+                    accent = if (hasDisclosureBearingAiUsage) ClearCutAccents.Mauve else ClearCutAccents.Teal
+                )
+
+                if (config.discloseAiUse && hasAiUsage) {
+                    ExportToggleRow(
+                        icon = Icons.AutoMirrored.Filled.Notes,
+                        title = stringResource(R.string.export_ai_use_sidecar_title),
+                        description = stringResource(R.string.export_ai_use_sidecar_description),
+                        checked = config.writeAiUseSidecar,
+                        onCheckedChange = {
+                            onConfigChanged(config.copy(writeAiUseSidecar = it))
+                        },
+                        accent = ClearCutAccents.Blue
+                    )
+                }
+
+                if (hasAiUsage) {
+                    TextButton(
+                        onClick = { showClearAiLedgerConfirm = true },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.export_ai_ledger_clear_button),
+                            color = ClearCutAccents.Red
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+            ExportToggleRow(
+                icon = Icons.Default.LayersClear,
+                title = stringResource(R.string.export_transparent_bg),
+                description = stringResource(R.string.export_transparent_bg_description),
+                checked = config.transparentBackground,
+                onCheckedChange = { onConfigChanged(config.copy(transparentBackground = it)) },
+                accent = ClearCutAccents.Teal
+            )
+
+            HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+            ExportToggleRow(
+                icon = Icons.Default.GifBox,
+                title = stringResource(R.string.export_gif),
+                description = stringResource(R.string.export_gif_description),
+                checked = config.exportAsGif,
+                onCheckedChange = {
+                    onConfigChanged(
+                        config.copy(
+                            exportAsGif = it,
+                            captureFrameOnly = false,
+                            exportAudioOnly = false,
+                            exportStemsOnly = false,
+                            exportAsContactSheet = false
+                        )
+                    )
+                },
+                accent = ClearCutAccents.Mauve
+            )
+
+            if (config.exportAsGif) {
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_gif_frame_rate),
+                    accent = ClearCutAccents.Mauve
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(10, 15, 20).forEach { frameRate ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(gifFrameRate = frameRate)) },
+                                label = { Text(stringResource(R.string.export_fps_value, frameRate), style = MaterialTheme.typography.labelMedium) },
+                                selected = config.gifFrameRate == frameRate,
+                                colors = exportChipColors(ClearCutAccents.Mauve)
+                            )
+                        }
+                    }
+                }
+
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_gif_max_width),
+                    accent = ClearCutAccents.Mauve
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(320, 480, 640).forEach { maxWidth ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(gifMaxWidth = maxWidth)) },
+                                label = { Text(stringResource(R.string.export_pixels_value, maxWidth), style = MaterialTheme.typography.labelMedium) },
+                                selected = config.gifMaxWidth == maxWidth,
+                                colors = exportChipColors(ClearCutAccents.Mauve)
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+            ExportToggleRow(
+                icon = Icons.Default.Image,
+                title = stringResource(R.string.export_capture_frame),
+                description = stringResource(R.string.export_capture_frame_description),
+                checked = config.captureFrameOnly,
+                onCheckedChange = {
+                    onConfigChanged(
+                        config.copy(
+                            captureFrameOnly = it,
+                            exportAsGif = false,
+                            exportAudioOnly = false,
+                            exportStemsOnly = false,
+                            exportAsContactSheet = false
+                        )
+                    )
+                },
+                accent = ClearCutAccents.Green
+            )
+
+            if (config.captureFrameOnly) {
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_capture_format),
+                    accent = ClearCutAccents.Green
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FrameCaptureFormat.entries.forEach { format ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(captureFormat = format)) },
+                                label = { Text(format.displayName, style = MaterialTheme.typography.labelMedium) },
+                                selected = config.captureFormat == format,
+                                colors = exportChipColors(ClearCutAccents.Green)
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+            ExportToggleRow(
+                icon = Icons.Default.ViewModule,
+                title = stringResource(R.string.export_contact_sheet),
+                description = stringResource(R.string.export_contact_sheet_description),
+                checked = config.exportAsContactSheet,
+                onCheckedChange = {
+                    onConfigChanged(
+                        config.copy(
+                            exportAsContactSheet = it,
+                            exportAsGif = false,
+                            captureFrameOnly = false,
+                            exportAudioOnly = false,
+                            exportStemsOnly = false
+                        )
+                    )
+                },
+                accent = ClearCutAccents.Flamingo
+            )
+
+            if (config.exportAsContactSheet) {
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_contact_sheet_columns),
+                    accent = ClearCutAccents.Flamingo
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(2, 3, 4, 5, 6).forEach { cols ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(contactSheetColumns = cols)) },
+                                label = { Text(pluralStringResource(R.plurals.export_columns_count, cols, cols), style = MaterialTheme.typography.labelMedium) },
+                                selected = config.contactSheetColumns == cols,
+                                colors = exportChipColors(ClearCutAccents.Flamingo)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Watermark burn-in. Applies across all video clips during export;
+            // no effect on GIF / contact-sheet / frame-capture paths.
+            if (videoModeEnabled) {
+                HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+                WatermarkSection(
+                    watermark = config.watermark,
+                    onWatermarkChanged = { updated ->
+                        onConfigChanged(config.copy(watermark = updated))
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ExportSectionCard(
+            title = stringResource(R.string.export_delivery_options),
+            description = stringResource(R.string.export_delivery_options_description),
+            accent = ClearCutAccents.Sapphire
+        ) {
+            if (videoModeEnabled && suggestedResolution != null &&
+                (suggestedResolution != config.resolution || (suggestedFps != null && suggestedFps != config.frameRate))
+            ) {
+                val label = if (suggestedFps != null) {
+                    stringResource(R.string.export_suggested_resolution_fps, suggestedResolution.label, suggestedFps)
+                } else {
+                    stringResource(R.string.export_suggested_resolution, suggestedResolution.label)
+                }
+                val upscaleWarning = config.resolution.height > suggestedResolution.height
+                Surface(
+                    shape = RoundedCornerShape(Radius.md),
+                    color = if (upscaleWarning) ClearCutAccents.Yellow.copy(alpha = 0.12f) else ClearCutAccents.Green.copy(alpha = 0.12f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (upscaleWarning) ClearCutAccents.Yellow.copy(alpha = 0.3f) else ClearCutAccents.Green.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            var updated = config.copy(resolution = suggestedResolution)
+                            if (suggestedFps != null) updated = updated.copy(frameRate = suggestedFps)
+                            onConfigChanged(updated)
+                        }
+                        .padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            if (upscaleWarning) Icons.Default.Warning else Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = if (upscaleWarning) ClearCutAccents.Yellow else ClearCutAccents.Green,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (upscaleWarning) ClearCutAccents.Yellow else ClearCutAccents.Green
+                            )
+                            if (upscaleWarning) {
+                                Text(
+                                    stringResource(R.string.export_exceeds_source_resolution),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = semanticColors.subtext
+                                )
+                            }
+                        }
+                        Text(
+                            stringResource(R.string.ai_apply),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = ClearCutAccents.Mauve
+                        )
+                    }
+                }
+            }
+
+            if (videoModeEnabled) {
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_resolution),
+                    accent = ClearCutAccents.Rosewater
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Resolution.entries.forEach { resolution ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(resolution = resolution)) },
+                                label = { Text(resolution.label, style = MaterialTheme.typography.labelMedium) },
+                                selected = config.resolution == resolution,
+                                colors = exportChipColors(ClearCutAccents.Rosewater)
+                            )
+                        }
+                    }
+                }
+
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_frame_rate),
+                    accent = ClearCutAccents.Mauve
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(24, 30, 60).forEach { frameRate ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(frameRate = frameRate)) },
+                                label = { Text(stringResource(R.string.export_fps_value, frameRate), style = MaterialTheme.typography.labelMedium) },
+                                selected = config.frameRate == frameRate,
+                                colors = exportChipColors(ClearCutAccents.Mauve)
+                            )
+                        }
+                    }
+                }
+
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_codec),
+                    accent = ClearCutAccents.Blue
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        VideoCodec.entries.forEach { codec ->
+                            val isAvailable = codec in availableCodecs
+                            FilterChip(
+                                onClick = { if (isAvailable) onConfigChanged(config.copy(codec = codec)) },
+                                label = { Text(codec.label, style = MaterialTheme.typography.labelMedium) },
+                                selected = config.codec == codec,
+                                enabled = isAvailable,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = semanticColors.panelRaised,
+                                    labelColor = semanticColors.subtext,
+                                    selectedContainerColor = ClearCutAccents.Blue.copy(alpha = 0.16f),
+                                    selectedLabelColor = ClearCutAccents.Blue,
+                                    disabledContainerColor = semanticColors.panelRaised.copy(alpha = 0.45f),
+                                    disabledLabelColor = semanticColors.subtext.copy(alpha = 0.4f)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                ExportToggleRow(
+                    icon = Icons.Default.Speed,
+                    title = stringResource(R.string.export_constant_frame_rate),
+                    description = stringResource(R.string.export_constant_frame_rate_description),
+                    checked = config.forceConstantFrameRate,
+                    onCheckedChange = { enabled ->
+                        onConfigChanged(config.copy(forceConstantFrameRate = enabled))
+                    },
+                    accent = ClearCutAccents.Mauve
+                )
+
+                ExportToggleRow(
+                    icon = Icons.Default.GraphicEq,
+                    title = stringResource(R.string.export_hdr_preserve),
+                    description = stringResource(
+                        when {
+                            effectiveConfig.codec == VideoCodec.H264 -> R.string.export_hdr_preserve_disabled
+                            !hdrProfileSupport.canPreserveHdr -> R.string.export_hdr_preserve_feature_disabled
+                            hdrOverlayDecision.samplerBudgetExceeded -> R.string.export_hdr_preserve_sampler_budget
+                            hdrOverlayDecision.requiresSdrFallback -> R.string.export_hdr_preserve_overlays_disabled
+                            else -> R.string.export_hdr_preserve_description
+                        }
+                    ),
+                    checked = config.hdr10PlusMetadata && codecCanCarryHdr &&
+                        !hdrOverlayDecision.requiresSdrFallback &&
+                        !hdrOverlayDecision.samplerBudgetExceeded,
+                    enabled = codecCanCarryHdr &&
+                        !hdrOverlayDecision.requiresSdrFallback &&
+                        !hdrOverlayDecision.samplerBudgetExceeded,
+                    onCheckedChange = { enabled ->
+                        onConfigChanged(config.copy(hdr10PlusMetadata = enabled && codecCanCarryHdr))
+                    },
+                    accent = ClearCutAccents.Yellow
+                )
+
+                HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.6f))
+
+                ExportToggleRow(
+                    icon = Icons.Default.Speed,
+                    title = stringResource(R.string.export_fast_trim),
+                    description = stringResource(R.string.export_fast_trim_description),
+                    checked = config.allowStreamCopy && !config.forceConstantFrameRate,
+                    enabled = !config.forceConstantFrameRate,
+                    onCheckedChange = { onConfigChanged(config.copy(allowStreamCopy = it)) },
+                    accent = ClearCutAccents.Green
+                )
+
+                ExportToggleRow(
+                    icon = Icons.Default.PrivacyTip,
+                    title = stringResource(R.string.export_scrub_metadata),
+                    description = stringResource(R.string.export_scrub_metadata_description),
+                    checked = config.scrubMetadata,
+                    onCheckedChange = { scrub ->
+                        onConfigChanged(
+                            config.copy(
+                                scrubMetadata = scrub,
+                                preserveSourceLocationMetadata = if (scrub) false else config.preserveSourceLocationMetadata,
+                                preserveSourceStreamMetadata = if (scrub) false else config.preserveSourceStreamMetadata,
+                            )
+                        )
+                    },
+                    accent = ClearCutAccents.Red
+                )
+
+                if (!config.scrubMetadata) {
+                    ExportToggleRow(
+                        icon = Icons.Default.PrivacyTip,
+                        title = stringResource(R.string.export_preserve_location_metadata),
+                        description = stringResource(R.string.export_preserve_location_metadata_description),
+                        checked = config.preserveSourceLocationMetadata,
+                        onCheckedChange = { enabled ->
+                            onConfigChanged(config.copy(preserveSourceLocationMetadata = enabled))
+                        },
+                        accent = ClearCutAccents.Yellow
+                    )
+                    ExportToggleRow(
+                        icon = Icons.Default.Info,
+                        title = stringResource(R.string.export_preserve_stream_metadata),
+                        description = stringResource(R.string.export_preserve_stream_metadata_description),
+                        checked = config.preserveSourceStreamMetadata,
+                        onCheckedChange = { enabled ->
+                            onConfigChanged(config.copy(preserveSourceStreamMetadata = enabled))
+                        },
+                        accent = ClearCutAccents.Blue
+                    )
+                }
+
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_quality),
+                    accent = ClearCutAccents.Teal
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ExportQuality.entries.forEach { quality ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(quality = quality)) },
+                                label = { Text(localizedExportQuality(quality), style = MaterialTheme.typography.labelMedium) },
+                                selected = config.quality == quality,
+                                colors = exportChipColors(ClearCutAccents.Teal)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (audioCodecVisible) {
+                ExportChoiceGroup(
+                    title = stringResource(R.string.export_audio_codec),
+                    accent = ClearCutAccents.Peach
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AudioCodec.supportedExportCodecs.forEach { audioCodec ->
+                            FilterChip(
+                                onClick = { onConfigChanged(config.copy(audioCodec = audioCodec)) },
+                                label = { Text(audioCodec.label, style = MaterialTheme.typography.labelMedium) },
+                                selected = config.audioCodec == audioCodec,
+                                colors = exportChipColors(ClearCutAccents.Peach)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ExportSectionCard(
+            title = stringResource(R.string.export_output_details),
+            description = summaryDetail,
+            accent = ClearCutAccents.Rosewater
+        ) {
+            Text(
+                text = outputDetailsPrimary,
+                color = semanticColors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = outputDetailsSecondary,
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            if (videoModeEnabled) {
+                ColorConfidenceOutlook(report = colorConfidenceReport)
+                DeviceTierOutlook(hint = deviceTierHint)
+                // Highest-Value #2 — pre-export AI provenance preview. Renders
+                // the AiUsageLedger summary as severity-coloured chips
+                // alongside the existing color/HDR confidence row. Empty
+                // ledger renders a single "No AI assistance recorded" line.
+                AiUseConfidenceRow(
+                    chips = remember(aiUsageEntries) {
+                        AiUsageLedger.summarizeForChips(aiUsageEntries)
+                    },
+                )
+            }
+            if (estimatedSize != null && videoModeEnabled) {
+                Text(
+                    text = stringResource(R.string.export_estimated_size_format, estimatedSize),
+                    color = ClearCutAccents.Peach,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            if (exportDurationMs > 0L && videoModeEnabled) {
+                val etaSec = estimateExportEtaSeconds(exportDurationMs, effectiveConfig)
+                Text(
+                    text = stringResource(R.string.export_estimated_time_format, formatEtaSeconds(etaSec)),
+                    color = ClearCutAccents.Blue,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (smartRenderSummary != null) {
+                    SmartRenderExportOutlook(summary = smartRenderSummary)
+                }
+                // Pre-flight warnings. These are static heuristics so they run
+                // every recomposition without any state plumbing — the signal
+                // is whether the *currently selected* config will produce an
+                // expensive render, not historical comparison. The goal is to
+                // surface obvious footguns ("4K AV1 in a 2-hour timeline")
+                // before the user hits Export, not to second-guess every
+                // conservative choice.
+                val preflightWarnings = buildList {
+                    // 30-minute render is our "go make coffee" threshold. Below
+                    // that most users tolerate the wait; above it, surfacing a
+                    // heads-up prevents the "is it stuck?" support pattern.
+                    if (etaSec >= 30L * 60L) {
+                        add(stringResource(R.string.export_warning_long_render, formatEtaSeconds(etaSec)))
+                    }
+                    // 1 GB is the practical upper bound for most share targets
+                    // — WhatsApp caps at 16 MB, Telegram 50 MB, Gmail 25 MB,
+                    // and even YouTube/Drive uploads from mobile get painful
+                    // past a gig. Warn so users can pick target-size if they
+                    // intended to share.
+                    val estimatedBytes = estimateExportBytes(exportDurationMs, effectiveConfig)
+                    if (estimatedBytes >= 1_073_741_824L) {
+                        add(stringResource(R.string.export_warning_large_file))
+                    }
+                    // AV1 is efficient when hardware-backed, but expensive
+                    // when the device only exposes software encode. The tier
+                    // probe lets premium devices keep the UI calm.
+                    if (effectiveConfig.codec == VideoCodec.AV1 && !deviceTierHint.hasHardwareAv1) {
+                        add(stringResource(R.string.export_warning_av1_slow))
+                    }
+                    // Device-aware encoder capability probe. Surfaces a
+                    // reason-bearing message when the codec+resolution+fps+
+                    // bitrate combo exceeds what any advertised encoder on
+                    // this device accepts. The probe is cached across
+                    // recompositions via remember — MediaCodecList queries
+                    // are cheap but not free, and the result only changes
+                    // when the user tweaks the config.
+                    val probe = remember(
+                        effectiveConfig.codec,
+                        width, height,
+                        effectiveConfig.frameRate,
+                        effectiveConfig.videoBitrate
+                    ) {
+                        EncoderCapabilityProbe.check(
+                            codec = effectiveConfig.codec,
+                            width = width,
+                            height = height,
+                            framerate = effectiveConfig.frameRate,
+                            bitrate = effectiveConfig.videoBitrate
+                        )
+                    }
+                    if (!probe.known || !probe.supported) {
+                        probe.reason?.let { add(it) }
+                    }
+                }
+                preflightWarnings.forEach { warning ->
+                    Text(
+                        text = warning,
+                        color = ClearCutAccents.Yellow,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+
+        if (exportHistory.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            ExportHistorySection(
+                entries = exportHistory.take(3),
+                onResumeExport = onResumeExport,
+            )
+        }
+
+        if (videoModeEnabled) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ExportSectionCard(
+                title = stringResource(R.string.export_target_size),
+                description = stringResource(R.string.export_target_size_description),
+                accent = ClearCutAccents.Pink
+            ) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        onClick = {
+                            onConfigChanged(config.copy(targetSizeBytes = null, bitrateOverride = null))
+                        },
+                        label = { Text(stringResource(R.string.settings_off), style = MaterialTheme.typography.labelMedium) },
+                        selected = config.targetSizeBytes == null,
+                        colors = exportChipColors(ClearCutAccents.Pink)
+                    )
+                    TargetSizePreset.entries.forEach { preset ->
+                        FilterChip(
+                            onClick = {
+                                onConfigChanged(config.copy(targetSizeBytes = preset.sizeBytes))
+                            },
+                            label = { Text(preset.displayName, style = MaterialTheme.typography.labelMedium) },
+                            selected = config.targetSizeBytes == preset.sizeBytes,
+                            colors = exportChipColors(ClearCutAccents.Pink)
+                        )
+                    }
+                }
+                if (config.targetSizeBytes != null && exportDurationMs > 0L) {
+                    val mbps = effectiveConfig.videoBitrate / 1_000_000.0
+                    Text(
+                        text = stringResource(R.string.export_target_bitrate, mbps),
+                        color = semanticColors.subtext,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ExportSectionCard(
+                title = stringResource(R.string.export_filename_template),
+                description = stringResource(R.string.export_filename_template_description),
+                accent = ClearCutAccents.Lavender
+            ) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        "{name}" to R.string.export_filename_name,
+                        "{name}_{date}" to R.string.export_filename_name_date,
+                        "{name}_{date}_{time}" to R.string.export_filename_name_timestamp,
+                        "{name}_{res}_{fps}" to R.string.export_filename_name_specs,
+                        "{name}_{preset}" to R.string.export_filename_name_preset,
+                        "{name}_{duration}" to R.string.export_filename_name_duration,
+                        "{name}_{sizeMB}" to R.string.export_filename_name_size
+                    ).forEach { (tmpl, labelRes) ->
+                        FilterChip(
+                            onClick = { onConfigChanged(config.copy(filenameTemplate = tmpl)) },
+                            label = { Text(stringResource(labelRes), style = MaterialTheme.typography.labelMedium) },
+                            selected = config.filenameTemplate == tmpl,
+                            colors = exportChipColors(ClearCutAccents.Lavender)
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.export_current_filename_template, config.filenameTemplate),
+                    color = semanticColors.subtext,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ExportSectionCard(
+            title = stringResource(R.string.export_ready_to_export),
+            description = stringResource(R.string.export_ready_to_export_description),
+            accent = ClearCutAccents.Rosewater
+        ) {
+            ClearCutPrimaryButton(
+                text = primaryButtonLabel,
+                onClick = {
+                    if (config.captureFrameOnly) {
+                        onCaptureFrame()
+                    } else {
+                        // Video export path. When a subtitle format is selected the
+                        // sidecar is now written inside ExportDelegate.startExport's
+                        // `onComplete`, so it lands next to the rendered file with
+                        // guaranteed ordering before Share/Save-to-Gallery are offered.
+                        // Firing `onExportSubtitles` here used to write the same file
+                        // in parallel to a separate `externalFilesDir/subtitles/` dir
+                        // and could race the share intent — removed to stop duplicating
+                        // work and to keep the sidecar co-located with the video.
+                        onStartExport()
+                    }
+                },
+                icon = primaryButtonIcon,
+                enabled = rangeReady,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .testTag(ClearCutTestTags.EXPORT_PRIMARY_ACTION)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ExportSectionCard(
+            title = stringResource(R.string.export_timeline_exchange),
+            description = stringResource(R.string.export_timeline_exchange_description),
+            accent = ClearCutAccents.Sapphire
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+            ) {
+                ClearCutSecondaryButton(
+                    text = stringResource(R.string.export_otio),
+                    onClick = onExportOtio,
+                    modifier = Modifier.weight(1f),
+                    contentColor = ClearCutAccents.Sapphire
+                )
+                ClearCutSecondaryButton(
+                    text = stringResource(R.string.export_fcpxml),
+                    onClick = onExportFcpxml,
+                    modifier = Modifier.weight(1f),
+                    contentColor = ClearCutAccents.Sapphire
+                )
+                ClearCutSecondaryButton(
+                    text = stringResource(R.string.export_edit_decision_json),
+                    onClick = onExportEditDecisionJson,
+                    modifier = Modifier.weight(1f),
+                    contentColor = ClearCutAccents.Sapphire
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExportSectionCard(
+    title: String,
+    description: String? = null,
+    accent: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val colors = LocalClearCutColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.xs, vertical = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                color = colors.text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            if (!description.isNullOrBlank()) {
+                Text(
+                    text = description,
+                    color = colors.subtext,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        content()
+        HorizontalDivider(color = accent.copy(alpha = if (colors.highContrast) 0.72f else 0.18f))
+    }
+}
+
+@Composable
+private fun ExportSummarySettingRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    val colors = LocalClearCutColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = TouchTarget.minimum)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = label,
+            color = colors.text,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            color = accent,
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.End
+        )
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = colors.subtext,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+    HorizontalDivider(color = colors.cardStroke)
+}
+
+@Composable
+private fun ExportHistorySection(
+    entries: List<ExportHistoryEntry>,
+    onResumeExport: (ExportHistoryEntry) -> Unit,
+) {
+    val semanticColors = LocalClearCutColors.current
+    val dateFormat = remember {
+        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+    }
+    ExportSectionCard(
+        title = stringResource(R.string.export_history_title),
+        description = stringResource(R.string.export_history_description),
+        accent = ClearCutAccents.Teal
+    ) {
+        entries.forEachIndexed { index, entry ->
+            ExportHistoryRow(
+                entry = entry,
+                dateFormat = dateFormat,
+                onResumeExport = onResumeExport,
+            )
+            if (index < entries.lastIndex) {
+                HorizontalDivider(color = semanticColors.cardStroke.copy(alpha = 0.7f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExportHistoryRow(
+    entry: ExportHistoryEntry,
+    dateFormat: DateFormat,
+    onResumeExport: (ExportHistoryEntry) -> Unit,
+) {
+    val semanticColors = LocalClearCutColors.current
+    val statusColor = when (entry.status) {
+        ExportHistoryStatus.COMPLETE -> ClearCutAccents.Green
+        ExportHistoryStatus.FAILED -> ClearCutAccents.Red
+        ExportHistoryStatus.CANCELLED -> ClearCutAccents.Peach
+        ExportHistoryStatus.BLOCKED -> ClearCutAccents.Yellow
+    }
+    val statusLabel = when (entry.status) {
+        ExportHistoryStatus.COMPLETE -> stringResource(R.string.export_history_status_complete)
+        ExportHistoryStatus.FAILED -> stringResource(R.string.export_history_status_failed)
+        ExportHistoryStatus.CANCELLED -> stringResource(R.string.export_history_status_cancelled)
+        ExportHistoryStatus.BLOCKED -> stringResource(R.string.export_history_status_blocked)
+    }
+    val detail = stringResource(
+        R.string.export_history_detail_format,
+        dateFormat.format(Date(entry.finishedAtEpochMs)),
+        entry.outputBytes?.let(::formatHistoryBytes) ?: entry.resolutionLabel,
+        formatEtaSeconds((entry.elapsedMs / 1000L).coerceAtLeast(0L))
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Surface(
+                color = statusColor.copy(alpha = 0.16f),
+                shape = RoundedCornerShape(Radius.md),
+                border = BorderStroke(1.dp, statusColor.copy(alpha = 0.32f))
+            ) {
+                Text(
+                    text = statusLabel,
+                    color = statusColor,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = entry.outputName ?: entry.projectName,
+                    color = semanticColors.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = detail,
+                    color = semanticColors.subtext,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (entry.rangeStartMs != null && entry.rangeEndMs != null) {
+                    Text(
+                        text = stringResource(
+                            R.string.export_range_summary,
+                            formatEtaSeconds((entry.rangeStartMs / 1000L).coerceAtLeast(0L)),
+                            formatEtaSeconds((entry.rangeEndMs / 1000L).coerceAtLeast(0L)),
+                            formatEtaSeconds(((entry.rangeEndMs - entry.rangeStartMs) / 1000L).coerceAtLeast(0L)),
+                        ),
+                        color = ClearCutAccents.Teal,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                entry.diagnosticSummary?.let { diagnostic ->
+                    Text(
+                        text = diagnostic,
+                        color = if (entry.status == ExportHistoryStatus.COMPLETE) semanticColors.subtext else ClearCutAccents.Yellow,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (entry.mediaBlockingCount > 0 || entry.mediaWarningCount > 0) {
+                    Text(
+                        text = stringResource(
+                            R.string.export_history_media_issues_format,
+                            entry.mediaBlockingCount,
+                            entry.mediaWarningCount
+                        ),
+                        color = ClearCutAccents.Peach,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (entry.status == ExportHistoryStatus.CANCELLED && entry.resumePartialPath != null) {
+                    TextButton(
+                        onClick = { onResumeExport(entry) },
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.export_resume),
+                            color = ClearCutAccents.Teal,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExportChoiceGroup(
+    title: String,
+    accent: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Text(
+            text = title,
+            color = accent,
+            style = MaterialTheme.typography.labelLarge
+        )
+        content()
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun ColorConfidenceOutlook(report: ExportColorConfidenceEngine.Report) {
+    val semanticColors = LocalClearCutColors.current
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = if (report.hasWarnings) ClearCutAccents.Yellow.copy(alpha = 0.08f) else ClearCutAccents.Green.copy(alpha = 0.08f),
+        border = BorderStroke(
+            1.dp,
+            if (report.hasWarnings) ClearCutAccents.Yellow.copy(alpha = 0.24f) else ClearCutAccents.Green.copy(alpha = 0.22f)
+        ),
+        shape = RoundedCornerShape(Radius.lg)
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.export_color_confidence_title),
+                color = semanticColors.text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = stringResource(R.string.export_color_confidence_description),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodySmall
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+            ) {
+                report.chips.forEach { chip ->
+                    ColorConfidencePill(chip = chip)
+                }
+            }
+            report.warnings.forEach { warning ->
+                Text(
+                    text = warning,
+                    color = ClearCutAccents.Yellow,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun DeviceTierOutlook(hint: EncoderCapabilityProbe.DeviceEncodingTierHint) {
+    val semanticColors = LocalClearCutColors.current
+    val accent = when (hint.tier) {
+        EncoderCapabilityProbe.DeviceEncodingTier.PREMIUM -> ClearCutAccents.Mauve
+        EncoderCapabilityProbe.DeviceEncodingTier.ADVANCED -> ClearCutAccents.Blue
+        EncoderCapabilityProbe.DeviceEncodingTier.STANDARD -> semanticColors.subtext
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = accent.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
+        shape = RoundedCornerShape(Radius.lg)
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Speed,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = stringResource(R.string.export_device_tier_title, localizedDeviceTier(hint.tier)),
+                    color = semanticColors.text,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Text(
+                text = hint.detail,
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodySmall
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+            ) {
+                if (hint.hasHardwareHevc) {
+                    DeviceCapabilityPill(stringResource(R.string.export_hardware_hevc), ClearCutAccents.Blue)
+                }
+                if (hint.hasHardwareAv1) {
+                    DeviceCapabilityPill(stringResource(R.string.export_hardware_av1), ClearCutAccents.Green)
+                }
+                if (hint.hasHardwareVp9) {
+                    DeviceCapabilityPill(stringResource(R.string.export_hardware_vp9), ClearCutAccents.Teal)
+                }
+                hint.hdrFormats
+                    .sortedBy { it.displayName }
+                    .forEach { format ->
+                        DeviceCapabilityPill(format.displayName, ClearCutAccents.Yellow)
+                    }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceCapabilityPill(
+    text: String,
+    accent: Color
+) {
+    Surface(
+        color = accent.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(Radius.sm),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.2f))
+    ) {
+        Text(
+            text = text,
+            color = accent,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+        )
+    }
+}
+
+@Composable
+private fun ColorConfidencePill(
+    chip: ExportColorConfidenceEngine.Chip,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    val accent = when (chip.tone) {
+        ExportColorConfidenceEngine.Tone.GOOD -> ClearCutAccents.Green
+        ExportColorConfidenceEngine.Tone.INFO -> ClearCutAccents.Blue
+        ExportColorConfidenceEngine.Tone.WARNING -> ClearCutAccents.Yellow
+    }
+    Surface(
+        modifier = modifier,
+        color = accent.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(Radius.md),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.22f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = chip.label,
+                color = accent,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = chip.detail,
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun SmartRenderExportOutlook(summary: SmartRenderEngine.SmartRenderSummary) {
+    val semanticColors = LocalClearCutColors.current
+    val passThroughPercent = if (summary.totalDurationMs > 0L) {
+        ((summary.passThroughDurationMs * 100L) / summary.totalDurationMs).toInt().coerceIn(0, 100)
+    } else {
+        0
+    }
+    val isInstant = summary.totalSegments > 0 && summary.reEncodeSegments == 0
+    val speedupText = if (isInstant) {
+        stringResource(R.string.render_speedup_instant)
+    } else {
+        stringResource(R.string.render_speedup_value, summary.estimatedSpeedup.coerceAtMost(99.9f))
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = ClearCutAccents.Blue.copy(alpha = 0.10f),
+        border = BorderStroke(1.dp, ClearCutAccents.Blue.copy(alpha = 0.24f)),
+        shape = RoundedCornerShape(Radius.lg)
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = null,
+                    tint = ClearCutAccents.Blue,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = stringResource(R.string.export_smart_render_title),
+                    color = semanticColors.text,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Surface(
+                    color = ClearCutAccents.Blue.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(Radius.sm)
+                ) {
+                    Text(
+                        text = speedupText,
+                        color = ClearCutAccents.Blue,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            Text(
+                text = stringResource(
+                    R.string.export_smart_render_detail,
+                    passThroughPercent,
+                    summary.passThroughSegments,
+                    summary.reEncodeSegments
+                ),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.bodySmall
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+            ) {
+                SmartRenderMetricPill(
+                    text = stringResource(
+                        R.string.render_pass_through_duration,
+                        formatEtaSeconds((summary.passThroughDurationMs / 1000L).coerceAtLeast(0L))
+                    ),
+                    accent = ClearCutAccents.Green
+                )
+                SmartRenderMetricPill(
+                    text = stringResource(
+                        R.string.render_re_encode_duration,
+                        formatEtaSeconds((summary.reEncodeDurationMs / 1000L).coerceAtLeast(0L))
+                    ),
+                    accent = ClearCutAccents.Peach
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmartRenderMetricPill(
+    text: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        color = accent.copy(alpha = 0.11f),
+        shape = RoundedCornerShape(Radius.md)
+    ) {
+        Text(
+            text = text,
+            color = accent,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+    }
+}
+
+/**
+ * Watermark configuration UI. Renders inside the Special Outputs section
+ * and is only shown when `videoModeEnabled` — audio / stems / GIF /
+ * contact-sheet exports don't get a watermark. The picker stores the
+ * returned URI directly; `ExportWatermarkOverlay.loadBitmap` resolves it
+ * at export time via the content resolver (handles both `file://` paths
+ * from a local import and `content://` URIs from a system picker).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WatermarkSection(
+    watermark: Watermark?,
+    onWatermarkChanged: (Watermark?) -> Unit
+) {
+    val semanticColors = LocalClearCutColors.current
+    val context = LocalContext.current
+    val pickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+                // Some providers do not grant persistable access; the current
+                // in-memory URI still works for the active export session.
+            }
+            onWatermarkChanged(
+                (watermark ?: Watermark(sourceUri = uri)).copy(sourceUri = uri)
+            )
+        }
+    }
+
+    ExportToggleRow(
+        icon = Icons.Default.Image,
+        title = stringResource(R.string.export_watermark),
+        description = stringResource(R.string.export_watermark_description),
+        checked = watermark != null,
+        onCheckedChange = { enabled ->
+            if (enabled) {
+                pickerLauncher.launch(arrayOf("image/*"))
+            } else {
+                onWatermarkChanged(null)
+            }
+        },
+        accent = ClearCutAccents.Rosewater
+    )
+
+    if (watermark != null) {
+        ExportChoiceGroup(
+            title = stringResource(R.string.export_watermark_position),
+            accent = ClearCutAccents.Rosewater
+        ) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                WatermarkPosition.entries.forEach { pos ->
+                    FilterChip(
+                        onClick = { onWatermarkChanged(watermark.copy(position = pos)) },
+                        label = { Text(localizedWatermarkPosition(pos), style = MaterialTheme.typography.labelMedium) },
+                        selected = watermark.position == pos,
+                        colors = exportChipColors(ClearCutAccents.Rosewater)
+                    )
+                }
+            }
+        }
+
+        Column(modifier = Modifier.padding(top = 4.dp)) {
+            Text(
+                text = stringResource(R.string.export_watermark_opacity, (watermark.opacity * 100).toInt()),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.labelMedium
+            )
+            androidx.compose.material3.Slider(
+                value = watermark.opacity,
+                onValueChange = { onWatermarkChanged(watermark.copy(opacity = it.coerceIn(0f, 1f))) },
+                valueRange = 0f..1f,
+                steps = 19,  // 5% step increments
+                colors = androidx.compose.material3.SliderDefaults.colors(
+                    thumbColor = ClearCutAccents.Rosewater,
+                    activeTrackColor = ClearCutAccents.Rosewater,
+                    inactiveTrackColor = semanticColors.surfaceHigh
+                )
+            )
+
+            Text(
+                text = stringResource(R.string.export_watermark_scale, watermark.scalePercent),
+                color = semanticColors.subtext,
+                style = MaterialTheme.typography.labelMedium
+            )
+            androidx.compose.material3.Slider(
+                value = watermark.scalePercent.toFloat(),
+                onValueChange = {
+                    onWatermarkChanged(watermark.copy(scalePercent = it.toInt().coerceIn(5, 50)))
+                },
+                valueRange = 5f..50f,
+                steps = 44,  // 1% step
+                colors = androidx.compose.material3.SliderDefaults.colors(
+                    thumbColor = ClearCutAccents.Rosewater,
+                    activeTrackColor = ClearCutAccents.Rosewater,
+                    inactiveTrackColor = semanticColors.surfaceHigh
+                )
+            )
+
+            // Re-pick button so users can swap the image without toggling
+            // the watermark off + on (which would lose the position /
+            // opacity / scale settings they'd already dialled in).
+            TextButton(
+                onClick = { pickerLauncher.launch(arrayOf("image/*")) },
+                modifier = Modifier.padding(top = 6.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.export_watermark_replace),
+                    color = ClearCutAccents.Blue
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExportToggleRow(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit,
+    accent: Color
+) {
+    val semanticColors = LocalClearCutColors.current
+    val colors = LocalClearCutColors.current
+    val contentAlpha = if (enabled) 1f else 0.52f
+    val semanticState = stringResource(if (checked && enabled) R.string.state_on else R.string.state_off)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = if (checked && enabled) accent.copy(alpha = 0.08f) else colors.panelRaised.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(Radius.lg),
+        border = BorderStroke(
+            1.dp,
+            if (checked && enabled) accent.copy(alpha = 0.24f) else colors.cardStroke
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { stateDescription = semanticState }
+                .toggleable(
+                    value = checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange
+                )
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = accent.copy(alpha = if (enabled) 0.14f else 0.07f),
+                shape = RoundedCornerShape(Radius.xl),
+                border = BorderStroke(1.dp, accent.copy(alpha = if (enabled) 0.22f else 0.10f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .padding(10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accent.copy(alpha = contentAlpha),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = title,
+                    color = colors.text.copy(alpha = contentAlpha),
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    text = description,
+                    color = colors.subtext.copy(alpha = contentAlpha),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Surface(
+                color = if (checked && enabled) accent.copy(alpha = 0.14f) else colors.panel,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, if (checked && enabled) accent.copy(alpha = 0.26f) else colors.cardStroke)
+            ) {
+                Text(
+                    text = semanticState,
+                    color = if (checked && enabled) accent else colors.subtext.copy(alpha = contentAlpha),
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                )
+            }
+
+            Switch(
+                checked = checked,
+                enabled = enabled,
+                onCheckedChange = null,
+                modifier = Modifier.clearAndSetSemantics { },
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = accent,
+                    checkedThumbColor = semanticColors.onAccent,
+                    uncheckedTrackColor = semanticColors.surface,
+                    uncheckedThumbColor = colors.subtext
+                )
+            )
+        }
+    }
+}
+
+/**
+ * Visual treatment for the primary CTA button on an [ExportStateCard]. Picking the right
+ * style is purely semantic — "Share completed export" is a confident success action, while
+ * "Cancel running export" is a destructive-ish action that should never look like a CTA.
+ */
+private enum class PrimaryStyle { Filled, Destructive, Quiet }
+
+@Composable
+private fun ExportStateCard(
+    icon: ImageVector,
+    tint: Color,
+    title: String,
+    body: String,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    progress: Float? = null,
+    progressLabel: String? = null,
+    secondaryBody: String? = null,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
+    tertiaryLabel: String? = null,
+    onTertiary: (() -> Unit)? = null,
+    primaryStyle: PrimaryStyle = PrimaryStyle.Filled
+) {
+    val colors = LocalClearCutColors.current
+    val statusDescription = listOfNotNull(title, progressLabel, secondaryBody).joinToString(". ")
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                liveRegion = LiveRegionMode.Polite
+                stateDescription = statusDescription
+            },
+        colors = CardDefaults.cardColors(containerColor = colors.panel),
+        border = BorderStroke(
+            1.dp,
+            if (colors.highContrast) colors.cardStrokeStrong else colors.cardStroke.copy(alpha = 0.9f)
+        ),
+        shape = RoundedCornerShape(Radius.xxl)
+    ) {
+        Box(
+            modifier = Modifier.background(
+                Brush.verticalGradient(
+                    listOf(
+                        tint.copy(alpha = 0.12f),
+                        colors.panelHighest.copy(alpha = 0.82f),
+                        colors.panel
+                    )
+                )
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Two-layer halo: outer translucent ring + inner filled disc with the icon.
+                // The ring gives the icon a sense of presence/depth without resorting to a
+                // hard shadow that would conflict with the surrounding gradient surface.
+                Box(contentAlignment = Alignment.Center) {
+                    Surface(
+                        color = Color.Transparent,
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, tint.copy(alpha = 0.18f)),
+                        modifier = Modifier.size(80.dp)
+                    ) {}
+                    Surface(
+                        color = tint.copy(alpha = 0.16f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, tint.copy(alpha = 0.28f))
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(18.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                icon,
+                                contentDescription = null,
+                                tint = tint,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(title, color = colors.text, style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = body,
+                    color = colors.subtext,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+
+                if (progress != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    // Smoothly animate the bar so it doesn't snap on each Transformer progress tick.
+                    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = progress.coerceIn(0f, 1f),
+                        animationSpec = Motion.standard(),
+                        label = "exportProgress"
+                    )
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(10.dp)
+                            .clip(RoundedCornerShape(Radius.sm))
+                            .semantics {
+                                progressBarRangeInfo = ProgressBarRangeInfo(animatedProgress, 0f..1f)
+                            },
+                        color = tint,
+                        trackColor = colors.panelHighest.copy(alpha = 0.8f)
+                    )
+                }
+                if (progressLabel != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        progressLabel,
+                        color = colors.text,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+                if (!secondaryBody.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(secondaryBody, color = tint, style = MaterialTheme.typography.labelLarge)
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+                when (primaryStyle) {
+                    PrimaryStyle.Destructive -> {
+                        ClearCutSecondaryButton(
+                            text = primaryLabel,
+                            onClick = onPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            contentColor = tint
+                        )
+                    }
+                    PrimaryStyle.Quiet -> {
+                        ClearCutSecondaryButton(
+                            text = primaryLabel,
+                            onClick = onPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            contentColor = colors.text
+                        )
+                    }
+                    PrimaryStyle.Filled -> {
+                        ClearCutPrimaryButton(
+                            text = primaryLabel,
+                            onClick = onPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            icon = if (tint == ClearCutAccents.Red) Icons.Default.Error else null
+                        )
+                    }
+                }
+
+                if (secondaryLabel != null && onSecondary != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ClearCutSecondaryButton(
+                        text = secondaryLabel,
+                        onClick = onSecondary,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentColor = colors.text
+                    )
+                }
+
+                if (tertiaryLabel != null && onTertiary != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    TextButton(onClick = onTertiary) {
+                        Text(tertiaryLabel, color = colors.subtext, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun exportChipColors(accent: Color): androidx.compose.material3.SelectableChipColors {
+    val semanticColors = LocalClearCutColors.current
+    return FilterChipDefaults.filterChipColors(
+        containerColor = semanticColors.panelRaised,
+        labelColor = semanticColors.subtext,
+        selectedContainerColor = accent.copy(alpha = 0.16f),
+        selectedLabelColor = accent
+    )
+}
+
+@Composable
+private fun localizedExportQuality(quality: ExportQuality): String = stringResource(
+    when (quality) {
+        ExportQuality.LOW -> R.string.export_quality_small_file
+        ExportQuality.MEDIUM -> R.string.export_quality_balanced
+        ExportQuality.HIGH -> R.string.export_quality_best
+    }
+)
+
+@Composable
+private fun localizedFrameCaptureFormat(format: FrameCaptureFormat): String = stringResource(
+    when (format) {
+        FrameCaptureFormat.PNG -> R.string.export_capture_format_png
+        FrameCaptureFormat.JPEG -> R.string.export_capture_format_jpeg_small
+    }
+)
+
+@Composable
+private fun localizedWatermarkPosition(position: WatermarkPosition): String = stringResource(
+    when (position) {
+        WatermarkPosition.TOP_LEFT -> R.string.watermark_position_top_left
+        WatermarkPosition.TOP_RIGHT -> R.string.watermark_position_top_right
+        WatermarkPosition.BOTTOM_LEFT -> R.string.watermark_position_bottom_left
+        WatermarkPosition.BOTTOM_RIGHT -> R.string.watermark_position_bottom_right
+        WatermarkPosition.CENTER -> R.string.watermark_position_center
+    }
+)
+
+@Composable
+private fun localizedDeviceTier(tier: EncoderCapabilityProbe.DeviceEncodingTier): String = stringResource(
+    when (tier) {
+        EncoderCapabilityProbe.DeviceEncodingTier.STANDARD -> R.string.export_device_tier_standard
+        EncoderCapabilityProbe.DeviceEncodingTier.ADVANCED -> R.string.export_device_tier_advanced
+        EncoderCapabilityProbe.DeviceEncodingTier.PREMIUM -> R.string.export_device_tier_premium
+    }
+)
+
+private fun estimateExportBytes(totalDurationMs: Long, config: ExportConfig): Long {
+    if (totalDurationMs <= 0L) return 0L
+    return ExportStoragePolicy.estimate(
+        ExportStoragePolicy.Request(
+            durationMs = totalDurationMs,
+            videoBitrate = config.videoBitrate,
+            audioBitrate = config.audioBitrate,
+            mode = ExportStoragePolicy.Mode.VIDEO,
+            targetSizeBytes = config.targetSizeBytes,
+        )
+    ).finalOutputBytes
+}
+
+private fun estimateExportSize(
+    totalDurationMs: Long,
+    config: ExportConfig
+): String? {
+    if (totalDurationMs <= 0L) return null
+
+    val estimatedBytes = estimateExportBytes(totalDurationMs, config)
+    return when {
+        estimatedBytes >= 1_073_741_824L -> "%.1f GB".format(estimatedBytes / 1_073_741_824.0)
+        estimatedBytes >= 1_048_576L -> "%.0f MB".format(estimatedBytes / 1_048_576.0)
+        else -> "%.0f KB".format(estimatedBytes / 1024.0)
+    }
+}
+
+/**
+ * Heuristic encode-time estimate before export starts. Calibrated against mid-range
+ * Android devices — 1080p30 runs at ~1.2x real-time with H.264, HEVC/AV1 are slower.
+ * Pixel count and bitrate scale the estimate roughly linearly.
+ */
+private fun estimateExportEtaSeconds(totalDurationMs: Long, config: ExportConfig): Long {
+    if (totalDurationMs <= 0L) return 0L
+    val durationSec = totalDurationMs / 1000.0
+    val pixels = config.resolution.width.toLong() * config.resolution.height.toLong()
+    val refPixels = 1920L * 1080L
+    val resolutionFactor = (pixels.toDouble() / refPixels).coerceAtLeast(0.25)
+    val codecFactor = when (config.codec) {
+        VideoCodec.H264 -> 1.0
+        VideoCodec.HEVC -> 1.6
+        VideoCodec.AV1 -> 2.4
+        VideoCodec.VP9 -> 1.9
+    }
+    val fpsFactor = config.frameRate / 30.0
+    // Base rate: 1080p30 H.264 ≈ 0.85x realtime on mid devices (so encode takes ~1.17x).
+    val encodeMultiplier = 1.17 * resolutionFactor * codecFactor * fpsFactor
+    return (durationSec * encodeMultiplier).toLong().coerceAtLeast(1L)
+}
+
+private fun formatEtaSeconds(seconds: Long): String = when {
+    seconds >= 3600 -> "%dh %dm".format(seconds / 3600, (seconds % 3600) / 60)
+    seconds >= 60 -> "%dm %02ds".format(seconds / 60, seconds % 60)
+    else -> "${seconds}s"
+}
+
+private fun formatHistoryBytes(bytes: Long): String = when {
+    bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L -> "%.0f MB".format(bytes / 1_048_576.0)
+    bytes >= 1024L -> "%.0f KB".format(bytes / 1024.0)
+    else -> "$bytes B"
+}
+
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun ExportPreviewPlayer(filePath: String) {
+    val semanticColors = LocalClearCutColors.current
+    val context = LocalContext.current
+    var player by remember(filePath, context) { mutableStateOf<ExoPlayer?>(null) }
+
+    DisposableEffect(filePath, context) {
+        player = null
+        val file = java.io.File(filePath)
+        if (!file.isFile || file.length() <= 0L) {
+            onDispose { }
+        } else {
+            val lease = CodecInstanceBudget.acquirePlayerBlocking()
+            val createdPlayer = try {
+                ExoPlayer.Builder(context).build().apply {
+                    setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
+                    repeatMode = Player.REPEAT_MODE_OFF
+                    prepare()
+                }
+            } catch (t: Throwable) {
+                lease.close()
+                throw t
+            }
+            player = createdPlayer
+            onDispose {
+                createdPlayer.release()
+                lease.close()
+                if (player === createdPlayer) player = null
+            }
+        }
+    }
+    val previewPlayer = player ?: return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = semanticColors.surfaceLow),
+        shape = RoundedCornerShape(Radius.lg)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    this.player = previewPlayer
+                    useController = true
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                    controllerAutoShow = true
+                }
+            },
+            update = { it.player = previewPlayer },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+        )
+    }
+}

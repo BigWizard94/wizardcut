@@ -1,0 +1,430 @@
+package com.novacut.editor.model
+
+import android.net.Uri
+import androidx.compose.runtime.Immutable
+import java.util.UUID
+
+@Immutable
+data class ExportConfig(
+    val resolution: Resolution = Resolution.FHD_1080P,
+    val frameRate: Int = 30,
+    /** Normalize variable-frame-rate sources to the selected output cadence. */
+    val forceConstantFrameRate: Boolean = false,
+    val codec: VideoCodec = VideoCodec.H264,
+    val quality: ExportQuality = ExportQuality.HIGH,
+    val audioCodec: AudioCodec = AudioCodec.AAC,
+    val audioBitrate: Int = 256_000,
+    val aspectRatio: AspectRatio = AspectRatio.RATIO_16_9,
+    val platformPreset: PlatformPreset? = null,
+    val exportAudioOnly: Boolean = false,
+    val exportStemsOnly: Boolean = false,
+    val includeChapterMarkers: Boolean = false,
+    val chapters: List<ChapterMarker> = emptyList(),
+    val subtitleFormat: SubtitleFormat? = null,
+    val burnSubtitles: Boolean = false,
+    val transparentBackground: Boolean = false,
+    val exportAsGif: Boolean = false,
+    val gifFrameRate: Int = 15,
+    val gifMaxWidth: Int = 480,
+    val captureFrameOnly: Boolean = false,
+    val captureFormat: FrameCaptureFormat = FrameCaptureFormat.PNG,
+    val targetSizeBytes: Long? = null,
+    val bitrateOverride: Int? = null,
+    val filenameTemplate: String = "{name}",
+    val exportAsContactSheet: Boolean = false,
+    val contactSheetColumns: Int = 4,
+    /** Null keeps the historical whole-timeline export behavior. */
+    val timelineRange: TimelineExportRange? = null,
+    val watermark: Watermark? = null,
+    // R8.9: when enabled, export writes a local AI-use declaration sidecar
+    // and downstream publish/share surfaces include disclosure copy derived
+    // from the per-project AiUsageLedger.
+    val discloseAiUse: Boolean = false,
+    val writeAiUseSidecar: Boolean = true,
+    // Requests HDR preservation for compatible HEVC / AV1 / VP9 exports.
+    // VideoEngine maps this to Media3 Composition.HDR_MODE_KEEP_HDR, while
+    // EncoderCapabilityProbe and ExportSheet warn when the selected encoder
+    // does not advertise HDR10+, Dolby Vision Profile 10, or other HDR support.
+    val hdr10PlusMetadata: Boolean = false,
+    // Gate for the LosslessCut-style stream-copy export path. The exporter
+    // attempts direct MediaExtractor/MediaMuxer copy for untouched single-source
+    // trims, then safely falls back to Transformer when the timeline is not
+    // eligible or the device muxer rejects the source.
+    val allowStreamCopy: Boolean = true,
+    // Source creation time and orientation are carried into rendered MP4s by
+    // default. Scrubbing explicitly removes source metadata from the render;
+    // the two opt-in flags below are ignored while scrubbing is enabled.
+    val scrubMetadata: Boolean = false,
+    val preserveSourceLocationMetadata: Boolean = false,
+    val preserveSourceStreamMetadata: Boolean = false
+) {
+    init {
+        require(videoBitrate > 0) { "Bitrate must be positive" }
+        require(audioBitrate > 0) { "Audio bitrate must be positive" }
+    }
+
+    /** Apply every delivery setting from a platform preset in one data-driven operation. */
+    fun withPlatformPreset(preset: PlatformPreset): ExportConfig = copy(
+        resolution = preset.resolution,
+        aspectRatio = preset.aspectRatio,
+        frameRate = preset.frameRate,
+        codec = preset.codec,
+        platformPreset = preset,
+    )
+
+    /** Use the selected delivery ratio, or the project canvas for a custom export. */
+    fun outputAspectRatio(projectAspectRatio: AspectRatio): AspectRatio =
+        platformPreset?.aspectRatio ?: projectAspectRatio
+
+    /**
+     * Resolve target-size constraint into a concrete bitrate override for the given
+     * timeline duration. Returns a copy of this config with `bitrateOverride` set so
+     * the encoder produces a file roughly matching `targetSizeBytes`. No-op if no
+     * target size is configured or duration is unusable.
+     */
+    fun resolveTargetSize(totalDurationMs: Long): ExportConfig {
+        val target = targetSizeBytes ?: return this
+        // A zero or negative duration means there's no renderable timeline
+        // yet. Falling back to the default quality-based bitrate would blow
+        // past the user's declared target the moment a clip is added. Pin to
+        // the video floor so the resolved bitrate always respects the
+        // target-size promise; the export is expected to re-resolve once a
+        // real duration is known.
+        if (totalDurationMs <= 0L) return copy(bitrateOverride = MIN_TARGET_VIDEO_BITRATE)
+        // Reserve 2% for container overhead (mp4 atoms, moov box) then subtract audio.
+        val usableBytes = (target * 0.98).toLong()
+        // Long timelines against small targets (Discord 8 MB, minutes of
+        // video) can need less video bitrate than the floor, or less total
+        // than the audio track alone. Step the audio down toward its floor
+        // before flooring the video bitrate — otherwise the floor silently
+        // more-than-doubles the promised file size.
+        var resolvedAudio = audioBitrate
+        fun videoBudgetBits(): Long {
+            val videoBytes = usableBytes - (resolvedAudio.toLong() * totalDurationMs / 8000L)
+            return if (videoBytes <= 0L) 0L else (videoBytes * 8L * 1000L) / totalDurationMs
+        }
+        while (videoBudgetBits() < MIN_TARGET_VIDEO_BITRATE && resolvedAudio > MIN_TARGET_AUDIO_BITRATE) {
+            resolvedAudio = (resolvedAudio / 2).coerceAtLeast(MIN_TARGET_AUDIO_BITRATE)
+        }
+        val bitsPerSec = videoBudgetBits()
+        // If even minimum audio leaves no video budget the target is
+        // unattainable at this duration; the floor is then a best-effort
+        // minimum, not a promise.
+        val clamped = bitsPerSec.coerceIn(MIN_TARGET_VIDEO_BITRATE.toLong(), 150_000_000L).toInt()
+        return copy(audioBitrate = resolvedAudio, bitrateOverride = clamped)
+    }
+
+    companion object {
+        // Floors for target-size resolution. 250 kbps video is intentionally
+        // low: a hard size cap (Discord upload limits) is the user's explicit
+        // priority over picture quality for long timelines.
+        const val MIN_TARGET_VIDEO_BITRATE = 250_000
+        const val MIN_TARGET_AUDIO_BITRATE = 64_000
+
+        fun youtube1080() = ExportConfig(
+            resolution = Resolution.FHD_1080P, frameRate = 30, quality = ExportQuality.HIGH,
+            aspectRatio = AspectRatio.RATIO_16_9, codec = VideoCodec.H264,
+            platformPreset = PlatformPreset.YOUTUBE_1080
+        )
+        fun youtube4k() = ExportConfig(
+            resolution = Resolution.UHD_4K, frameRate = 30, quality = ExportQuality.HIGH,
+            aspectRatio = AspectRatio.RATIO_16_9, codec = VideoCodec.HEVC,
+            platformPreset = PlatformPreset.YOUTUBE_4K
+        )
+        fun tiktok() = ExportConfig(
+            resolution = Resolution.FHD_1080P, frameRate = 30, quality = ExportQuality.HIGH,
+            aspectRatio = AspectRatio.RATIO_9_16, codec = VideoCodec.H264,
+            platformPreset = PlatformPreset.TIKTOK
+        )
+        fun instagram() = ExportConfig(
+            resolution = Resolution.FHD_1080P, frameRate = 30, quality = ExportQuality.MEDIUM,
+            aspectRatio = AspectRatio.RATIO_9_16, codec = VideoCodec.H264,
+            platformPreset = PlatformPreset.INSTAGRAM_REEL
+        )
+        fun instagramSquare() = ExportConfig(
+            resolution = Resolution.FHD_1080P, frameRate = 30, quality = ExportQuality.MEDIUM,
+            aspectRatio = AspectRatio.RATIO_1_1, codec = VideoCodec.H264,
+            platformPreset = PlatformPreset.INSTAGRAM_FEED
+        )
+        fun threads() = ExportConfig(
+            resolution = Resolution.FHD_1080P, frameRate = 30, quality = ExportQuality.HIGH,
+            aspectRatio = AspectRatio.RATIO_9_16, codec = VideoCodec.H264,
+            platformPreset = PlatformPreset.THREADS
+        )
+
+        /**
+         * Query the device's hardware encoder support and return available video codecs.
+         * H.264 is always included (guaranteed on all Android devices).
+         * HEVC, AV1, and VP9 are included only if a hardware encoder is present.
+         */
+        fun getAvailableCodecs(): List<VideoCodec> {
+            val list = mutableListOf(VideoCodec.H264) // Always available
+            val codecList = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
+            codecList.codecInfos.filter { it.isEncoder }.forEach { info ->
+                info.supportedTypes.forEach { type ->
+                    when (type.lowercase()) {
+                        "video/hevc" -> if (VideoCodec.HEVC !in list) list.add(VideoCodec.HEVC)
+                        "video/av01" -> if (VideoCodec.AV1 !in list) list.add(VideoCodec.AV1)
+                        "video/x-vnd.on2.vp9" -> if (VideoCodec.VP9 !in list) list.add(VideoCodec.VP9)
+                    }
+                }
+            }
+            return list
+        }
+    }
+
+    val videoBitrate: Int get() = bitrateOverride ?: defaultVideoBitrate
+
+    private val defaultVideoBitrate: Int get() = when (resolution) {
+        Resolution.SD_480P -> when (quality) {
+            ExportQuality.LOW -> 2_000_000
+            ExportQuality.MEDIUM -> 4_000_000
+            ExportQuality.HIGH -> 6_000_000
+        }
+        Resolution.HD_720P -> when (quality) {
+            ExportQuality.LOW -> 4_000_000
+            ExportQuality.MEDIUM -> 6_000_000
+            ExportQuality.HIGH -> 10_000_000
+        }
+        Resolution.FHD_1080P -> when (quality) {
+            ExportQuality.LOW -> 6_000_000
+            ExportQuality.MEDIUM -> 12_000_000
+            ExportQuality.HIGH -> 20_000_000
+        }
+        Resolution.QHD_1440P -> when (quality) {
+            ExportQuality.LOW -> 12_000_000
+            ExportQuality.MEDIUM -> 25_000_000
+            ExportQuality.HIGH -> 40_000_000
+        }
+        Resolution.UHD_4K -> when (quality) {
+            ExportQuality.LOW -> 25_000_000
+            ExportQuality.MEDIUM -> 50_000_000
+            ExportQuality.HIGH -> 80_000_000
+        }
+    }
+}
+
+enum class VideoCodec(val mimeType: String, val label: String) {
+    H264("video/avc", "H.264"),
+    HEVC("video/hevc", "H.265/HEVC"),
+    AV1("video/av01", "AV1"),
+    VP9("video/x-vnd.on2.vp9", "VP9")
+}
+
+enum class AudioCodec(val mimeType: String, val label: String) {
+    AAC("audio/mp4a-latm", "AAC"),
+    OPUS("audio/opus", "Opus"),
+    FLAC("audio/flac", "FLAC");
+
+    companion object {
+        /**
+         * Audio codecs with a complete, device-verified export path. Keep
+         * unsupported enum values for persisted-config compatibility, but do
+         * not expose them as selectable options until their container and
+         * fallback behavior are verified end to end.
+         */
+        val supportedExportCodecs: List<AudioCodec> = listOf(AAC)
+
+        fun isSupportedForExport(codec: AudioCodec): Boolean =
+            codec in supportedExportCodecs
+    }
+}
+
+enum class ExportQuality(val label: String) {
+    LOW("Small File"),
+    MEDIUM("Balanced"),
+    HIGH("Best Quality")
+}
+
+enum class PlatformPreset(
+    val displayName: String,
+    val resolution: Resolution,
+    val aspectRatio: AspectRatio,
+    val frameRate: Int,
+    val codec: VideoCodec,
+    /** Platform delivery targets require progressive MP4 metadata placement. */
+    val requiresStreamSafeMp4: Boolean = true,
+) {
+    YOUTUBE_1080(
+        "YouTube 1080p", Resolution.FHD_1080P, AspectRatio.RATIO_16_9, 30, VideoCodec.H264
+    ),
+    YOUTUBE_4K(
+        "YouTube 4K", Resolution.UHD_4K, AspectRatio.RATIO_16_9, 30, VideoCodec.HEVC
+    ),
+    TIKTOK(
+        "TikTok", Resolution.FHD_1080P, AspectRatio.RATIO_9_16, 30, VideoCodec.H264
+    ),
+    INSTAGRAM_FEED(
+        "Instagram Feed", Resolution.FHD_1080P, AspectRatio.RATIO_1_1, 30, VideoCodec.H264
+    ),
+    INSTAGRAM_REEL(
+        "Instagram Reels", Resolution.FHD_1080P, AspectRatio.RATIO_9_16, 30, VideoCodec.H264
+    ),
+    INSTAGRAM_STORY(
+        "Instagram Story", Resolution.FHD_1080P, AspectRatio.RATIO_9_16, 30, VideoCodec.H264
+    ),
+    TWITTER(
+        "Twitter/X", Resolution.FHD_1080P, AspectRatio.RATIO_16_9, 30, VideoCodec.H264
+    ),
+    LINKEDIN(
+        "LinkedIn", Resolution.FHD_1080P, AspectRatio.RATIO_16_9, 30, VideoCodec.H264
+    ),
+    THREADS(
+        "Threads", Resolution.FHD_1080P, AspectRatio.RATIO_9_16, 30, VideoCodec.H264
+    )
+}
+
+/** A platform preset is stream-safe only for MP4 output, never for a custom target. */
+fun ExportConfig.requiresStreamSafeOutput(outputExtension: String): Boolean =
+    outputExtension.equals("mp4", ignoreCase = true) &&
+        platformPreset?.requiresStreamSafeMp4 == true
+
+@Immutable
+data class ChapterMarker(
+    val timeMs: Long,
+    val title: String
+)
+
+enum class SubtitleFormat(val extension: String, val displayName: String) {
+    SRT("srt", "SubRip (.srt)"),
+    VTT("vtt", "WebVTT (.vtt)"),
+    ASS("ass", "Advanced SubStation (.ass)")
+}
+
+enum class TargetSizePreset(
+    val displayName: String,
+    val sizeBytes: Long
+) {
+    DISCORD_8("Discord (8 MB)", 8L * 1024 * 1024),
+    DISCORD_25("Discord Nitro (25 MB)", 25L * 1024 * 1024),
+    DISCORD_100("Discord Boosted (100 MB)", 100L * 1024 * 1024),
+    GMAIL_25("Gmail Attachment (25 MB)", 25L * 1024 * 1024),
+    TELEGRAM_50("Telegram (50 MB)", 50L * 1024 * 1024),
+    WHATSAPP_16("WhatsApp (16 MB)", 16L * 1024 * 1024),
+    TWITTER_512("Twitter/X (512 MB)", 512L * 1024 * 1024);
+}
+
+enum class FrameCaptureFormat(val extension: String, val displayName: String) {
+    PNG("png", "PNG"),
+    JPEG("jpg", "JPEG (smaller)")
+}
+
+/**
+ * A source-file cut that can be exported independently from the project
+ * timeline. The bounds are source-media milliseconds, not timeline frames.
+ */
+@Immutable
+data class BatchExportSourceRange(
+    val clipId: String,
+    val sourceUri: Uri,
+    val sourceDurationMs: Long,
+    val startMs: Long,
+    val endMs: Long,
+    val displayName: String,
+    val trackType: TrackType = TrackType.VIDEO,
+) {
+    init {
+        require(clipId.isNotBlank()) { "clipId must not be blank" }
+        require(sourceDurationMs > 0L) { "sourceDurationMs must be positive" }
+        require(startMs >= 0L) { "startMs must be non-negative" }
+        require(endMs > startMs) { "endMs must follow startMs" }
+        require(endMs <= sourceDurationMs) { "endMs cannot exceed sourceDurationMs" }
+        require(displayName.isNotBlank()) { "displayName must not be blank" }
+    }
+
+    val durationMs: Long get() = endMs - startMs
+
+    fun toClip(id: String): Clip = Clip(
+        id = id,
+        sourceUri = sourceUri,
+        sourceDurationMs = sourceDurationMs,
+        timelineStartMs = 0L,
+        trimStartMs = startMs,
+        trimEndMs = endMs,
+        name = displayName,
+    )
+
+    companion object {
+        fun fromClip(clip: Clip, trackType: TrackType): BatchExportSourceRange? {
+            val startMs = clip.trimStartMs.coerceAtLeast(0L)
+            val endMs = clip.trimEndMs.coerceAtMost(clip.sourceDurationMs)
+            if (clip.id.isBlank() || clip.sourceDurationMs <= 0L || endMs <= startMs) return null
+            val displayName = clip.name?.takeIf { it.isNotBlank() }
+                ?: clip.sourceUri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+                ?: "Clip"
+            return BatchExportSourceRange(
+                clipId = clip.id,
+                sourceUri = clip.sourceUri,
+                sourceDurationMs = clip.sourceDurationMs,
+                startMs = startMs,
+                endMs = endMs,
+                displayName = displayName,
+                trackType = trackType,
+            )
+        }
+    }
+}
+
+@Immutable
+data class BatchExportItem(
+    val id: String = UUID.randomUUID().toString(),
+    val config: ExportConfig,
+    val outputName: String,
+    val projectId: String = "",
+    val projectFingerprint: String = "",
+    val configFingerprint: String = "",
+    val status: BatchExportStatus = BatchExportStatus.QUEUED,
+    val progress: Float = 0f,
+    val errorMessage: String? = null,
+    val createdAtEpochMs: Long = System.currentTimeMillis(),
+    /** The planned output path, persisted before an item starts. */
+    val outputPath: String? = null,
+    /** A non-empty path means the item can resume its eligible video export. */
+    val resumePartialPath: String? = null,
+    /** Null keeps the historical uniform-project batch behavior. */
+    val sourceRange: BatchExportSourceRange? = null,
+)
+
+enum class BatchExportStatus {
+    QUEUED,
+    IN_PROGRESS,
+    COMPLETED,
+    FAILED,
+    CANCELLED,
+    PAUSED,
+    INTERRUPTED,
+    REVIEW_REQUIRED
+}
+
+/**
+ * Burn-in watermark applied across every video frame during export. `null`
+ * on `ExportConfig.watermark` means no watermark — no cost paid in the
+ * encoder pipeline. When non-null the export pipeline decodes the URI once,
+ * wraps it as a Media3 `BitmapOverlay`, and passes it alongside text
+ * overlays so the watermark is composited on-GPU.
+ *
+ * `sourceUri` must resolve to a decodable image (PNG with transparency is
+ * the typical brand-asset format, but JPEG and WebP are also accepted).
+ * `opacity` is multiplied against the bitmap's own alpha channel; 1.0 keeps
+ * the bitmap's authored transparency, values below dim the whole overlay.
+ */
+@Immutable
+data class Watermark(
+    val sourceUri: android.net.Uri,
+    val position: WatermarkPosition = WatermarkPosition.BOTTOM_RIGHT,
+    val opacity: Float = 0.9f,
+    val scalePercent: Int = 15
+) {
+    init {
+        require(opacity in 0f..1f) { "opacity must be in [0, 1]" }
+        require(scalePercent in 5..50) { "scalePercent must be in [5, 50]" }
+    }
+}
+
+enum class WatermarkPosition(val displayName: String) {
+    TOP_LEFT("Top Left"),
+    TOP_RIGHT("Top Right"),
+    BOTTOM_LEFT("Bottom Left"),
+    BOTTOM_RIGHT("Bottom Right"),
+    CENTER("Center")
+}

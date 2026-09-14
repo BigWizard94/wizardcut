@@ -1,0 +1,69 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build
+/baselineprofile/build
+/app/release
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties
+.env
+.zombie-build/
+.kotlin/
+# JVM hotspot crash dumps from local Gradle / Android Studio
+hs_err_pid*.log
+replay_pid*.log
+
+# Local planning docs — keep local only.
+# README.md and CHANGELOG.md are the tracked public documentation. ROADMAP.md
+# remains the local source of truth for open work; RESEARCH.md stays local.
+# The broad *.md rule below enforces this policy.
+CLAUDE.md
+.claude/
+RESEARCH.md
+ROADMAP-COMPLETED.md
+qa/
+# The app's QA source set is checked-in test input, not local QA scratch.
+!app/src/qa/
+!app/src/qa/**
+
+# Cross-project pollution — HostShield is a separate app whose research drafts
+# sometimes end up in this working tree. Block them at the .gitignore layer and
+# also lock with TrackedFilesAuditTest so they can never enter the tracked set.
+HostShield-Research-Report.md
+research/
+
+# Markdown files local-only (except README and the published policy documents).
+# docs/privacy-policy.md is the URL Google Play serves as the app's privacy
+# policy, so it must be tracked and reachable on GitHub; docs/play-data-safety.md
+# is the worksheet the Data safety form is filled in from.
+*.md
+!README.md
+!CHANGELOG.md
+!docs/models.md
+!docs/privacy-policy.md
+!docs/play-data-safety.md
+
+# AI config
+CODEX_CHANGELOG.md
+AGENTS.md
+.codex/
+.ai/
+PROJECT_CONTEXT.md
+CONTINUATION_PROMPT.md
+__pycache__/
+*.bak
+
+# Build and emulator logs carry local paths
+work/*.log
+work/*.txt
+work/**/build.log

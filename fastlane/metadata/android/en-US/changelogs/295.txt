@@ -1,0 +1,7 @@
+Nothing reports work that did not happen.
+Auto Captions mark measured timing when no transcription model is present.
+Copyright checks no longer call audio clear after an unmade lookup.
+Partial restores name what was lost and pause saving to protect the project.
+Export failures name their cause and next step; reports can be copied.
+Nine previously inert Settings controls now work.
+Snapshots, AI usage, and deleted templates are recoverable.

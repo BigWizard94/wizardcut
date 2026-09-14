@@ -1,0 +1,1805 @@
+package com.novacut.editor.ai
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import com.novacut.editor.engine.AppLog
+import com.novacut.editor.engine.AudioDecodeBudget
+import com.novacut.editor.engine.CodecInstanceBudget
+import com.novacut.editor.engine.AudioEffectsEngine
+import com.novacut.editor.engine.segmentation.SegmentationEngine
+import com.novacut.editor.engine.whisper.WhisperEngine
+import com.novacut.editor.model.TextOverlay
+import com.novacut.editor.model.TextAlignment
+import com.novacut.editor.model.TextAnimation
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import java.nio.ByteOrder
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
+
+private const val TAG = "AiFeatures"
+
+/**
+ * AI-powered features for ClearCut.
+ * Uses on-device analysis algorithms for real-time video/audio intelligence.
+ *
+ * Implemented:
+ * - Scene detection (frame difference analysis)
+ * - Auto color correction (histogram analysis)
+ * - Video stabilization (motion vector estimation)
+ * - Audio denoise (noise floor analysis + gating)
+ * - Auto captions (audio energy segmentation)
+ * - Background removal (luminance/chroma keying)
+ * - Motion tracking (template matching)
+ * - Smart crop (visual weight analysis)
+ */
+@Singleton
+class AiFeatures @Inject constructor(
+    @ApplicationContext private val context: Context,
+    val whisperEngine: WhisperEngine,
+    val segmentationEngine: SegmentationEngine
+) {
+    // ---- Auto Captions ----
+
+    /**
+     * Generates timed caption segments. Uses Whisper ONNX for real speech-to-text
+     * when the model is downloaded, otherwise falls back to audio energy segmentation.
+     *
+     * The fallback is timing only: it returns [CaptionSource.TIMING_ONLY] entries with
+     * empty text. It knows *when* someone spoke and nothing about *what* they said, so
+     * callers must present those entries as slots to fill, never as a transcript.
+     */
+    suspend fun generateAutoCaptions(
+        videoUri: Uri,
+        languageCode: String = "en",
+        onProgress: (Float) -> Unit = {}
+    ): CaptionOutcome {
+        // Use Whisper when model is available
+        if (whisperEngine.isReady()) {
+            return generateWhisperCaptions(videoUri, onProgress)
+        }
+        // Fallback to energy segmentation
+        return generateEnergyCaptions(videoUri, onProgress)
+    }
+
+    private suspend fun generateWhisperCaptions(
+        videoUri: Uri,
+        onProgress: (Float) -> Unit
+    ): CaptionOutcome = withContext(Dispatchers.IO) {
+        try {
+            val segments = whisperEngine.transcribe(videoUri, onProgress)
+            CaptionOutcome.Analyzed(
+                segments.map { seg ->
+                    CaptionEntry(
+                        startMs = seg.startMs,
+                        endMs = seg.endMs,
+                        text = seg.text,
+                        source = CaptionSource.TRANSCRIBED
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            // A crashed transcription is not silence. Reporting it as "no speech
+            // detected" told the user their audio was empty when nothing was heard.
+            AppLog.w(TAG, "Whisper caption generation failed", e)
+            CaptionOutcome.Failed(e.javaClass.simpleName)
+        }
+    }
+
+    private suspend fun generateEnergyCaptions(
+        videoUri: Uri,
+        onProgress: (Float) -> Unit
+    ): CaptionOutcome = withContext(Dispatchers.IO) {
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(context, videoUri, null)
+
+            var audioIndex = -1
+            var format: MediaFormat? = null
+            for (i in 0 until extractor.trackCount) {
+                val tf = extractor.getTrackFormat(i)
+                if (tf.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                    audioIndex = i
+                    format = tf
+                    break
+                }
+            }
+            if (audioIndex < 0 || format == null) return@withContext CaptionOutcome.Failed("no audio track")
+
+            extractor.selectTrack(audioIndex)
+            val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            if (channels <= 0) return@withContext CaptionOutcome.Failed("invalid channel count")
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext CaptionOutcome.Failed("unknown audio MIME")
+
+            // Decode audio to PCM amplitudes
+            val decoderLease = CodecInstanceBudget.acquireDecoder(mime)
+            val decoder = decoderLease.resource
+            val amplitudeChunks = mutableListOf<FloatArray>()
+            var totalSamples = 0
+
+            try {
+                decoder.configure(format, null, null, 0)
+                decoder.start()
+                val bufferInfo = MediaCodec.BufferInfo()
+                var eos = false
+
+                while (!eos) {
+                    ensureActive()
+                    val inIdx = decoder.dequeueInputBuffer(10000)
+                    if (inIdx >= 0) {
+                        val buf = decoder.getInputBuffer(inIdx) ?: continue
+                        val size = extractor.readSampleData(buf, 0)
+                        if (size < 0) {
+                            decoder.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            eos = true
+                        } else {
+                            decoder.queueInputBuffer(inIdx, 0, size, extractor.sampleTime, 0)
+                            extractor.advance()
+                        }
+                    }
+                    var outIdx = decoder.dequeueOutputBuffer(bufferInfo, 10000)
+                    while (outIdx >= 0) {
+                        val outBuf = decoder.getOutputBuffer(outIdx)
+                        if (outBuf != null && bufferInfo.size > 0) {
+                            val shortBuf = outBuf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+                            val samples = ShortArray(shortBuf.remaining())
+                            shortBuf.get(samples)
+                            // Convert to mono float amplitude
+                            val mono = FloatArray(samples.size / channels)
+                            for (i in mono.indices) {
+                                var sum = 0f
+                                for (ch in 0 until channels) {
+                                    val idx = i * channels + ch
+                                    if (idx < samples.size) sum += abs(samples[idx].toFloat())
+                                }
+                                mono[i] = sum / channels / 32768f
+                            }
+                            if (AudioDecodeBudget.exceedsBudget(totalSamples, mono.size)) {
+                                AppLog.w(TAG, "Caption PCM exceeds the in-memory budget; stopping decode")
+                                decoder.releaseOutputBuffer(outIdx, false)
+                                return@withContext CaptionOutcome.Failed("audio exceeds the in-memory decode budget")
+                            }
+                            amplitudeChunks.add(mono)
+                            totalSamples += mono.size
+                        }
+                        decoder.releaseOutputBuffer(outIdx, false)
+                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                            eos = true; break
+                        }
+                        outIdx = decoder.dequeueOutputBuffer(bufferInfo, 0)
+                    }
+                }
+            } finally {
+                decoderLease.close()
+            }
+
+            if (totalSamples == 0) return@withContext CaptionOutcome.Failed("no decoded audio")
+
+            // Flatten into single array
+            val allSamples = FloatArray(totalSamples)
+            var offset = 0
+            for (chunk in amplitudeChunks) {
+                System.arraycopy(chunk, 0, allSamples, offset, chunk.size)
+                offset += chunk.size
+            }
+
+            // Compute RMS energy in 100ms windows
+            val windowSamples = (sampleRate / 10).coerceAtLeast(1)
+            val windowCount = totalSamples / windowSamples
+            if (windowCount == 0) return@withContext CaptionOutcome.Failed("clip shorter than one analysis window")
+            val energy = FloatArray(windowCount)
+            var maxEnergy = 0f
+            for (w in 0 until windowCount) {
+                var sum = 0.0
+                val base = w * windowSamples
+                for (s in 0 until windowSamples) {
+                    val v = allSamples[base + s]
+                    sum += v * v
+                }
+                energy[w] = sqrt(sum / windowSamples).toFloat()
+                maxEnergy = max(maxEnergy, energy[w])
+            }
+
+            if (maxEnergy < 0.001f) return@withContext CaptionOutcome.Analyzed(emptyList())
+
+            // Normalize and find speech segments (above 15% threshold)
+            val threshold = maxEnergy * 0.15f
+            val captions = mutableListOf<CaptionEntry>()
+            var segmentStart = -1
+
+            for (w in 0 until windowCount) {
+                val isSpeech = energy[w] > threshold
+                if (isSpeech && segmentStart < 0) {
+                    segmentStart = w
+                } else if (!isSpeech && segmentStart >= 0) {
+                    val startMs = segmentStart * 100L
+                    val endMs = w * 100L
+                    if (endMs - startMs >= 300) { // Min 300ms segment
+                        captions.add(CaptionEntry(
+                            startMs = startMs,
+                            endMs = endMs,
+                            text = "",
+                            confidence = energy.slice(segmentStart until w).let { if (it.isEmpty()) 0.0 else it.average() }.toFloat() / maxEnergy,
+                            source = CaptionSource.TIMING_ONLY
+                        ))
+                    }
+                    segmentStart = -1
+                }
+            }
+            // Close final segment
+            if (segmentStart >= 0) {
+                val startMs = segmentStart * 100L
+                val endMs = windowCount * 100L
+                if (endMs - startMs >= 300) {
+                    captions.add(CaptionEntry(
+                        startMs = startMs,
+                        endMs = endMs,
+                        text = "",
+                        confidence = energy.slice(segmentStart until windowCount).let { if (it.isEmpty()) 0.0 else it.average() }.toFloat() / maxEnergy,
+                        source = CaptionSource.TIMING_ONLY
+                    ))
+                }
+            }
+
+            CaptionOutcome.Analyzed(captions)
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Energy-based caption generation failed", e)
+            CaptionOutcome.Failed("decode failed")
+        } finally {
+            extractor.release()
+        }
+    }
+
+    companion object {
+        fun cleanCaptionText(text: String): String {
+            val fillerPatterns = listOf(
+                "\\b[Uu]h\\b",
+                "\\b[Uu]m\\b",
+                "\\b[Uu]mm\\b",
+                "\\b[Uu]hh\\b",
+                "(?<=,\\s*|^\\.?\\s*)[Ll]ike,?(?=\\s)",
+                "\\b[Yy]ou know\\b",
+                "\\b[Ss]o\\b(?=\\s*,)",
+                "\\b[Aa]ctually\\b(?=\\s*,)",
+                "\\b[Bb]asically\\b(?=\\s*,)",
+                "\\b[Ll]iterally\\b(?=\\s*,)",
+                "\\b[Rr]ight\\b(?=\\s*,)",
+                "\\b[Ii] mean\\b"
+            )
+            var result = text
+            for (pattern in fillerPatterns) {
+                result = result.replace(Regex(pattern), "")
+            }
+            result = result.replace(Regex(",\\s*,"), ",")
+            result = result.replace(Regex("\\s{2,}"), " ")
+            result = result.replace(Regex("^\\s*,\\s*"), "")
+            result = result.replace(Regex("\\s*,\\s*$"), "")
+            return result.trim()
+        }
+
+        /**
+         * Convert caption entries to TextOverlay objects for the timeline.
+         */
+        fun captionsToOverlays(
+            captions: List<CaptionEntry>,
+            style: CaptionStyle = CaptionStyle()
+        ): List<TextOverlay> {
+            return captions.mapNotNull { caption ->
+                val cleaned = cleanCaptionText(caption.text)
+                // No words, no overlay. A timing-only caption always lands here, which
+                // is the point: its timing is real but it has nothing to say, and
+                // TextOverlay rightly refuses to exist without text. Callers surface
+                // those segments as timeline markers instead.
+                if (cleaned.isBlank()) return@mapNotNull null
+                TextOverlay(
+                    text = cleaned,
+                    fontSize = style.fontSize,
+                    color = style.textColor,
+                    backgroundColor = style.backgroundColor,
+                    strokeColor = style.strokeColor,
+                    strokeWidth = style.strokeWidth,
+                    bold = style.bold,
+                    alignment = TextAlignment.CENTER,
+                    positionX = 0.5f,
+                    positionY = style.positionY,
+                    startTimeMs = caption.startMs,
+                    endTimeMs = caption.endMs,
+                    animationIn = TextAnimation.FADE,
+                    animationOut = TextAnimation.FADE
+                )
+            }
+        }
+    }
+
+    // ---- Auto Color Correction ----
+
+    /**
+     * Analyzes multiple frames from the video to compute optimal color corrections.
+     * Uses histogram analysis across R/G/B channels to determine:
+     * - Brightness offset (shift mid-tone toward 128)
+     * - Contrast multiplier (expand histogram to fill 0-255 range)
+     * - Saturation adjustment (based on chroma spread)
+     * - Temperature bias (R/B channel imbalance)
+     */
+    suspend fun autoColorCorrect(
+        videoUri: Uri
+    ): ColorCorrection = withContext(Dispatchers.IO) {
+        val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(videoUri))
+        val retriever = retrieverLease.resource
+        try {
+            retriever.setDataSource(context, videoUri)
+            val rawDurationMs = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_DURATION
+            )?.toLongOrNull() ?: return@withContext ColorCorrection()
+            // Bound duration so `durationMs * (i*2+1)` cannot overflow Long.
+            val durationMs = com.novacut.editor.engine.MediaDurationPolicy.analyzableDurationMs(rawDurationMs)
+            if (durationMs <= 0L) return@withContext ColorCorrection()
+
+            // Sample 5 frames evenly across the clip
+            val sampleCount = 5
+            val histR = IntArray(256)
+            val histG = IntArray(256)
+            val histB = IntArray(256)
+            var totalPixels = 0L
+
+            for (i in 0 until sampleCount) {
+                val timeMs = durationMs * (i * 2 + 1) / (sampleCount * 2)
+                val frame = retriever.getFrameAtTime(
+                    timeMs * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                ) ?: continue
+
+                val scaled = Bitmap.createScaledBitmap(frame, 128, 72, true)
+                if (scaled !== frame) frame.recycle()
+
+                val pixelCount = scaled.width * scaled.height
+                val pixels = IntArray(pixelCount)
+                scaled.getPixels(pixels, 0, scaled.width, 0, 0, scaled.width, scaled.height)
+                for (pixel in pixels) {
+                    histR[Color.red(pixel)]++
+                    histG[Color.green(pixel)]++
+                    histB[Color.blue(pixel)]++
+                }
+                totalPixels += pixelCount
+                scaled.recycle()
+            }
+
+            if (totalPixels == 0L) return@withContext ColorCorrection()
+
+            // Calculate channel statistics
+            val avgR = channelAverage(histR, totalPixels)
+            val avgG = channelAverage(histG, totalPixels)
+            val avgB = channelAverage(histB, totalPixels)
+            val overallAvg = (avgR + avgG + avgB) / 3f
+
+            // Brightness: how far the average luminance is from mid-gray (128)
+            val brightnessOffset = (128f - overallAvg) / 255f // -1..1
+
+            // Contrast: find 1st and 99th percentile across all channels
+            val low1 = percentile(histR, histG, histB, totalPixels, 0.01f)
+            val high99 = percentile(histR, histG, histB, totalPixels, 0.99f)
+            val range = (high99 - low1).coerceAtLeast(1f)
+            val contrastMult = (220f / range).coerceIn(0.5f, 2.5f) // Target 220 of 256 range
+
+            // Saturation: analyze chroma spread
+            val chromaSpread = abs(avgR - avgG) + abs(avgG - avgB) + abs(avgR - avgB)
+            val saturationAdj = if (chromaSpread < 15f) 1.2f // Undersaturated
+                else if (chromaSpread > 80f) 0.85f // Oversaturated
+                else 1f
+
+            // Temperature: R/B imbalance
+            val tempBias = ((avgR - avgB) / 255f).coerceIn(-1f, 1f)
+            val tempCorrection = -tempBias * 0.3f // Counter the bias
+
+            ColorCorrection(
+                brightness = brightnessOffset.coerceIn(-0.5f, 0.5f),
+                contrast = contrastMult,
+                saturation = saturationAdj,
+                temperature = tempCorrection,
+                confidence = min(1f, totalPixels / 40000f)
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Auto color correction failed", e)
+            ColorCorrection()
+        } finally {
+            retrieverLease.close()
+        }
+    }
+
+    private fun channelAverage(hist: IntArray, total: Long): Float {
+        var sum = 0L
+        for (i in hist.indices) sum += i.toLong() * hist[i]
+        return sum.toFloat() / total
+    }
+
+    private fun percentile(hR: IntArray, hG: IntArray, hB: IntArray, total: Long, p: Float): Float {
+        val target = (total * 3 * p).toLong()
+        var cumulative = 0L
+        for (i in 0..255) {
+            cumulative += hR[i] + hG[i] + hB[i]
+            if (cumulative >= target) return i.toFloat()
+        }
+        return 255f
+    }
+
+    // ---- Audio Denoise ----
+
+    /**
+     * Analyzes audio to detect noise characteristics.
+     * Samples the first and last 500ms (typically ambient noise) to build a noise profile.
+     * Returns a noise reduction profile with recommended settings.
+     */
+    suspend fun analyzeAudioNoise(
+        videoUri: Uri
+    ): NoiseProfile = withContext(Dispatchers.IO) {
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(context, videoUri, null)
+
+            var audioIndex = -1
+            var format: MediaFormat? = null
+            for (i in 0 until extractor.trackCount) {
+                val tf = extractor.getTrackFormat(i)
+                if (tf.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                    audioIndex = i; format = tf; break
+                }
+            }
+            if (audioIndex < 0 || format == null) return@withContext NoiseProfile()
+
+            extractor.selectTrack(audioIndex)
+            val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            if (channels <= 0) return@withContext NoiseProfile()
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext NoiseProfile()
+
+            // Bounded decode: the analysis below only reads the first 10s (signal RMS)
+            // plus the first/last 500ms (noise floor), so keep a bounded head buffer and
+            // a 500ms tail ring instead of accumulating the whole track — a long input
+            // previously buffered every decoded sample and could OOM.
+            val decoderLease = CodecInstanceBudget.acquireDecoder(mime)
+            val decoder = decoderLease.resource
+            val budgetCap = AudioDecodeBudget.MAX_PCM_SAMPLES.toLong()
+            val headCapShorts = (sampleRate.toLong() * 10L * channels).coerceIn(1L, budgetCap).toInt()
+            val tailCapShorts = ((sampleRate.toLong() / 2L) * channels).coerceIn(1L, budgetCap).toInt()
+            val headChunks = mutableListOf<ShortArray>()
+            var headShorts = 0
+            val tailChunks = ArrayDeque<ShortArray>()
+            var tailShorts = 0
+            var totalShorts = 0L
+
+            try {
+                decoder.configure(format, null, null, 0)
+                decoder.start()
+                val bufferInfo = MediaCodec.BufferInfo()
+                var eos = false
+
+                while (!eos) {
+                    ensureActive()
+                    val inIdx = decoder.dequeueInputBuffer(10000)
+                    if (inIdx >= 0) {
+                        val buf = decoder.getInputBuffer(inIdx) ?: continue
+                        val size = extractor.readSampleData(buf, 0)
+                        if (size < 0) {
+                            decoder.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            eos = true
+                        } else {
+                            decoder.queueInputBuffer(inIdx, 0, size, extractor.sampleTime, 0)
+                            extractor.advance()
+                        }
+                    }
+                    var outIdx = decoder.dequeueOutputBuffer(bufferInfo, 10000)
+                    while (outIdx >= 0) {
+                        val outBuf = decoder.getOutputBuffer(outIdx)
+                        if (outBuf != null && bufferInfo.size > 0) {
+                            val shortBuf = outBuf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+                            val arr = ShortArray(shortBuf.remaining())
+                            shortBuf.get(arr)
+                            if (arr.isNotEmpty()) {
+                                // Head: first 10s only (overshoots by at most one chunk).
+                                if (headShorts < headCapShorts &&
+                                    !AudioDecodeBudget.exceedsBudget(headShorts, arr.size)
+                                ) {
+                                    headChunks.add(arr)
+                                    headShorts += arr.size
+                                }
+                                // Tail ring: drop whole chunks from the front while the
+                                // remainder still covers the last 500ms.
+                                if (!AudioDecodeBudget.exceedsBudget(tailShorts, arr.size)) {
+                                    tailChunks.addLast(arr)
+                                    tailShorts += arr.size
+                                    while (tailChunks.size > 1 &&
+                                        tailShorts - tailChunks.first().size >= tailCapShorts
+                                    ) {
+                                        tailShorts -= tailChunks.removeFirst().size
+                                    }
+                                }
+                                totalShorts += arr.size
+                            }
+                        }
+                        decoder.releaseOutputBuffer(outIdx, false)
+                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                            eos = true; break
+                        }
+                        outIdx = decoder.dequeueOutputBuffer(bufferInfo, 0)
+                    }
+                }
+            } finally {
+                decoderLease.close()
+            }
+
+            if (totalShorts == 0L) return@withContext NoiseProfile()
+
+            // Flatten the bounded buffers
+            val head = ShortArray(headShorts)
+            var off = 0
+            for (chunk in headChunks) {
+                System.arraycopy(chunk, 0, head, off, chunk.size)
+                off += chunk.size
+            }
+            val tail = ShortArray(tailShorts)
+            off = 0
+            for (chunk in tailChunks) {
+                System.arraycopy(chunk, 0, tail, off, chunk.size)
+                off += chunk.size
+            }
+            // Global short index of the first sample retained in `tail` — indexing
+            // through it keeps frame/channel alignment without assuming chunk sizes
+            // are channel-aligned.
+            val tailStartShorts = totalShorts - tailShorts
+
+            val monoSamples = totalShorts / channels
+
+            // Analyze first and last 500ms for noise floor
+            val noiseSampleCount = min(sampleRate / 2L, monoSamples / 4L) // 500ms or 25% of clip
+            var noiseRmsSum = 0.0
+            var noiseCount = 0
+
+            // First 500ms (always within the 10s head buffer)
+            for (i in 0 until min(noiseSampleCount, monoSamples)) {
+                val idx = i * channels
+                if (idx < head.size) {
+                    val v = head[idx.toInt()].toFloat() / 32768f
+                    noiseRmsSum += v * v
+                    noiseCount++
+                }
+            }
+            // Last 500ms (from the tail ring)
+            val lastStart = max(0L, monoSamples - noiseSampleCount)
+            for (i in lastStart until monoSamples) {
+                val local = i * channels - tailStartShorts
+                if (local in 0 until tail.size.toLong()) {
+                    val v = tail[local.toInt()].toFloat() / 32768f
+                    noiseRmsSum += v * v
+                    noiseCount++
+                }
+            }
+
+            val noiseFloorRms = if (noiseCount > 0) sqrt(noiseRmsSum / noiseCount).toFloat() else 0f
+
+            // Calculate overall signal RMS from the head (up to 10s)
+            var signalRmsSum = 0.0
+            for (i in 0 until min(monoSamples, sampleRate * 10L)) {
+                val idx = i * channels
+                if (idx < head.size) {
+                    val v = head[idx.toInt()].toFloat() / 32768f
+                    signalRmsSum += v * v
+                }
+            }
+            val signalSampleCount = min(monoSamples, sampleRate * 10L).coerceAtLeast(1L)
+            val signalRms = sqrt(signalRmsSum / signalSampleCount).toFloat()
+
+            val snrDb = if (noiseFloorRms > 0.0001f) {
+                20f * kotlin.math.log10(signalRms / noiseFloorRms)
+            } else 60f // Very clean audio
+
+            // Determine reduction strength based on SNR
+            val reductionStrength = when {
+                snrDb < 10f -> 0.8f  // Very noisy
+                snrDb < 20f -> 0.6f  // Noisy
+                snrDb < 30f -> 0.4f  // Moderate noise
+                snrDb < 40f -> 0.2f  // Light noise
+                else -> 0.1f         // Clean
+            }
+
+            NoiseProfile(
+                noiseFloorDb = 20f * kotlin.math.log10(max(noiseFloorRms, 0.0001f)),
+                signalToNoiseDb = snrDb,
+                recommendedReduction = reductionStrength,
+                noiseGateThreshold = noiseFloorRms * 1.5f,
+                confidence = if (noiseCount > sampleRate / 4) 0.9f else 0.5f
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Audio noise analysis failed", e)
+            NoiseProfile()
+        } finally {
+            extractor.release()
+        }
+    }
+
+    // ---- Background Removal ----
+
+    /**
+     * Analyzes a frame to determine the dominant background color and returns
+     * chroma key parameters to remove it. Samples edge regions (top/bottom/left/right
+     * border strips) to identify the background color.
+     *
+     * @return BackgroundAnalysis with detected bg color and recommended chroma key settings
+     */
+    suspend fun analyzeBackground(
+        videoUri: Uri
+    ): BackgroundAnalysis = withContext(Dispatchers.IO) {
+        val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(videoUri))
+        val retriever = retrieverLease.resource
+        try {
+            retriever.setDataSource(context, videoUri)
+            val durationMs = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_DURATION
+            )?.toLongOrNull() ?: return@withContext BackgroundAnalysis()
+
+            // Sample frame from middle of clip
+            val frame = retriever.getFrameAtTime(
+                (durationMs / 2) * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+            ) ?: return@withContext BackgroundAnalysis()
+
+            val scaled = Bitmap.createScaledBitmap(frame, 128, 72, true)
+            if (scaled !== frame) frame.recycle()
+            val w = scaled.width
+            val h = scaled.height
+
+            // Sample edge pixels (15% border strips)
+            val borderW = max(1, (w * 0.15f).toInt())
+            val borderH = max(1, (h * 0.15f).toInt())
+            var sumR = 0L; var sumG = 0L; var sumB = 0L; var count = 0L
+
+            val pixels = IntArray(w * h)
+            scaled.getPixels(pixels, 0, w, 0, 0, w, h)
+            scaled.recycle()
+            for (y in 0 until h) {
+                for (x in 0 until w) {
+                    if (x < borderW || x >= w - borderW || y < borderH || y >= h - borderH) {
+                        val p = pixels[y * w + x]
+                        sumR += Color.red(p)
+                        sumG += Color.green(p)
+                        sumB += Color.blue(p)
+                        count++
+                    }
+                }
+            }
+
+            if (count == 0L) return@withContext BackgroundAnalysis()
+
+            val avgR = (sumR / count).toInt()
+            val avgG = (sumG / count).toInt()
+            val avgB = (sumB / count).toInt()
+
+            // Detect if background is a solid-ish color (low variance)
+            val bgColor = Color.rgb(avgR, avgG, avgB)
+
+            // Determine if green screen, blue screen, or general background
+            val isGreenScreen = avgG > avgR * 1.3f && avgG > avgB * 1.3f && avgG > 80
+            val isBlueScreen = avgB > avgR * 1.3f && avgB > avgG * 1.1f && avgB > 80
+
+            val similarity = when {
+                isGreenScreen -> 0.35f
+                isBlueScreen -> 0.35f
+                else -> 0.45f // General background needs wider tolerance
+            }
+
+            BackgroundAnalysis(
+                backgroundColor = bgColor,
+                isGreenScreen = isGreenScreen,
+                isBlueScreen = isBlueScreen,
+                recommendedSimilarity = similarity,
+                recommendedSmoothness = 0.12f,
+                recommendedSpill = 0.15f,
+                confidence = if (isGreenScreen || isBlueScreen) 0.9f else 0.5f
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Background analysis failed", e)
+            BackgroundAnalysis()
+        } finally {
+            retrieverLease.close()
+        }
+    }
+
+    // ---- Scene Detection ----
+
+    /**
+     * Analyzes video to detect scene changes (cuts, transitions).
+     * Uses frame difference analysis with adaptive thresholding.
+     */
+    suspend fun detectScenes(
+        videoUri: Uri,
+        sensitivity: Float = 0.5f
+    ): List<SceneChange> = withContext(Dispatchers.IO) {
+        val scenes = mutableListOf<SceneChange>()
+        val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(videoUri))
+        val retriever = retrieverLease.resource
+
+        try {
+            retriever.setDataSource(context, videoUri)
+            val rawDurationMs = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_DURATION
+            )?.toLongOrNull() ?: return@withContext emptyList()
+            // Skip proportional scanning for non-positive/overflowed/> 24h metadata.
+            val durationMs = com.novacut.editor.engine.MediaDurationPolicy.analyzableDurationMs(rawDurationMs)
+            if (durationMs <= 0L) return@withContext emptyList()
+
+            val intervalMs = 500L
+            var previousFrame: Bitmap? = null
+            var currentMs = 0L
+
+            while (currentMs < durationMs) {
+                ensureActive()
+                val frame = retriever.getFrameAtTime(
+                    currentMs * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                )
+                if (frame != null && previousFrame != null) {
+                    // Guard the diff: if createScaledBitmap throws (OOM / odd dims) we must
+                    // still recycle both frames below and keep scanning, not leak + abort
+                    // the whole scan with an uncaught exception (this fun has no outer catch).
+                    val difference = try {
+                        calculateFrameDifference(previousFrame, frame)
+                    } catch (e: Exception) {
+                        AppLog.w(TAG, "Scene-diff failed at ${currentMs}ms", e)
+                        0f
+                    }
+                    val threshold = 0.3f + (1f - sensitivity) * 0.5f
+                    if (difference > threshold) {
+                        scenes.add(SceneChange(
+                            timestampMs = currentMs,
+                            confidence = difference,
+                            type = if (difference > 0.8f) SceneChangeType.HARD_CUT
+                                   else SceneChangeType.TRANSITION
+                        ))
+                    }
+                    previousFrame.recycle()
+                } else if (frame == null && previousFrame != null) {
+                    previousFrame.recycle()
+                }
+                previousFrame = frame
+                currentMs += intervalMs
+            }
+            previousFrame?.recycle()
+        } finally {
+            retrieverLease.close()
+        }
+
+        scenes
+    }
+
+    // ---- Motion Tracking ----
+
+    /**
+     * Tracks a region of interest across video frames using template matching.
+     * Extracts the initial region as a template, then searches for it in
+     * subsequent frames using block matching with adaptive search window.
+     */
+    suspend fun trackMotion(
+        videoUri: Uri,
+        initialRegion: TrackingRegion,
+        startMs: Long,
+        endMs: Long
+    ): List<TrackingResult> = withContext(Dispatchers.IO) {
+        val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(videoUri))
+        val retriever = retrieverLease.resource
+        try {
+            retriever.setDataSource(context, videoUri)
+            val results = mutableListOf<TrackingResult>()
+            val stepMs = 100L // 10fps tracking
+            val analysisW = 128
+            val analysisH = 72
+
+            var prevCenterX = initialRegion.centerX
+            var prevCenterY = initialRegion.centerY
+            var prevFrame: Bitmap? = null
+            var currentMs = startMs
+
+            while (currentMs <= endMs) {
+                val frame = retriever.getFrameAtTime(
+                    currentMs * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                )
+                if (frame != null) {
+                    val scaled = Bitmap.createScaledBitmap(frame, analysisW, analysisH, true)
+                    if (scaled !== frame) frame.recycle()
+
+                    if (prevFrame != null) {
+                        // Estimate motion from previous frame
+                        val (dx, dy) = estimateRegionMotion(
+                            prevFrame, scaled,
+                            (prevCenterX * analysisW).toInt(),
+                            (prevCenterY * analysisH).toInt(),
+                            (initialRegion.width * analysisW / 2).toInt().coerceAtLeast(4)
+                        )
+                        prevCenterX = (prevCenterX + dx).coerceIn(0f, 1f)
+                        prevCenterY = (prevCenterY + dy).coerceIn(0f, 1f)
+                        prevFrame.recycle()
+                    }
+
+                    results.add(TrackingResult(
+                        timestampMs = currentMs,
+                        region = TrackingRegion(
+                            centerX = prevCenterX,
+                            centerY = prevCenterY,
+                            width = initialRegion.width,
+                            height = initialRegion.height
+                        ),
+                        confidence = 0.9f - (currentMs - startMs).toFloat() / (endMs - startMs).coerceAtLeast(1L) * 0.3f
+                    ))
+                    prevFrame = scaled
+                }
+                currentMs += stepMs
+            }
+            prevFrame?.recycle()
+            results
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Scene detection failed", e)
+            emptyList()
+        } finally {
+            retrieverLease.close()
+        }
+    }
+
+    /**
+     * Estimate motion of a specific region between frames using block matching.
+     */
+    private fun estimateRegionMotion(
+        prev: Bitmap, curr: Bitmap,
+        centerX: Int, centerY: Int, radius: Int
+    ): Pair<Float, Float> {
+        val w = min(prev.width, curr.width)
+        val h = min(prev.height, curr.height)
+        if (w < 8 || h < 8) return 0f to 0f
+        val searchRange = max(2, radius / 2)
+
+        var bestDx = 0
+        var bestDy = 0
+        var bestDiff = Long.MAX_VALUE
+
+        for (dy in -searchRange..searchRange) {
+            for (dx in -searchRange..searchRange) {
+                var diff = 0L
+                var count = 0
+                for (by in -radius..radius step 2) {
+                    for (bx in -radius..radius step 2) {
+                        val px = centerX + bx
+                        val py = centerY + by
+                        val sx = px + dx
+                        val sy = py + dy
+                        if (px in 0 until w && py in 0 until h &&
+                            sx in 0 until w && sy in 0 until h) {
+                            val p1 = prev.getPixel(px, py)
+                            val p2 = curr.getPixel(sx, sy)
+                            diff += abs((p1 shr 16 and 0xFF) - (p2 shr 16 and 0xFF)) +
+                                    abs((p1 shr 8 and 0xFF) - (p2 shr 8 and 0xFF)) +
+                                    abs((p1 and 0xFF) - (p2 and 0xFF))
+                            count++
+                        }
+                    }
+                }
+                if (count > 0 && diff / count < bestDiff) {
+                    bestDiff = diff / count
+                    bestDx = dx
+                    bestDy = dy
+                }
+            }
+        }
+
+        return bestDx.toFloat() / w to bestDy.toFloat() / h
+    }
+
+    // ---- Smart Crop ----
+
+    /**
+     * Analyzes the video to find the visual center of interest using
+     * edge density and luminance weighting (saliency approximation).
+     */
+    suspend fun suggestCrop(
+        videoUri: Uri,
+        targetAspectRatio: Float
+    ): CropSuggestion = withContext(Dispatchers.IO) {
+        val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(videoUri))
+        val retriever = retrieverLease.resource
+        try {
+            retriever.setDataSource(context, videoUri)
+            val durationMs = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_DURATION
+            )?.toLongOrNull() ?: return@withContext CropSuggestion()
+
+            // Analyze 3 frames
+            var weightedX = 0f
+            var weightedY = 0f
+            var totalWeight = 0f
+
+            for (i in 0 until 3) {
+                val timeMs = durationMs * (i * 2 + 1) / 6
+                val frame = retriever.getFrameAtTime(
+                    timeMs * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                ) ?: continue
+
+                val scaled = Bitmap.createScaledBitmap(frame, 64, 36, true)
+                if (scaled !== frame) frame.recycle()
+
+                // Compute edge density per region (3x3 grid)
+                val gridW = scaled.width / 3
+                val gridH = scaled.height / 3
+                for (gy in 0 until 3) {
+                    for (gx in 0 until 3) {
+                        var edgeSum = 0f
+                        var count = 0
+                        for (y in gy * gridH + 1 until min((gy + 1) * gridH, scaled.height - 1)) {
+                            for (x in gx * gridW + 1 until min((gx + 1) * gridW, scaled.width - 1)) {
+                                // Simple Sobel edge detection approximation
+                                val c = luminance(scaled.getPixel(x, y))
+                                val l = luminance(scaled.getPixel(x - 1, y))
+                                val r = luminance(scaled.getPixel(x + 1, y))
+                                val t = luminance(scaled.getPixel(x, y - 1))
+                                val b = luminance(scaled.getPixel(x, y + 1))
+                                edgeSum += abs(r - l) + abs(b - t)
+                                count++
+                            }
+                        }
+                        if (count > 0) {
+                            val density = edgeSum / count
+                            val regionCenterX = (gx + 0.5f) / 3f
+                            val regionCenterY = (gy + 0.5f) / 3f
+                            // Apply rule-of-thirds weighting (center-bias + thirds intersections)
+                            val thirdsBoost = when {
+                                gx == 1 && gy == 1 -> 1.2f
+                                (gx == 0 || gx == 2) && (gy == 0 || gy == 2) -> 1.1f
+                                else -> 1.0f
+                            }
+                            val weight = density * thirdsBoost
+                            weightedX += regionCenterX * weight
+                            weightedY += regionCenterY * weight
+                            totalWeight += weight
+                        }
+                    }
+                }
+                scaled.recycle()
+            }
+
+            val safeRatio = targetAspectRatio.coerceAtLeast(0.01f)
+
+            if (totalWeight < 0.001f) {
+                return@withContext CropSuggestion(
+                    centerX = 0.5f, centerY = 0.5f,
+                    width = 1f, height = (1f / safeRatio).coerceAtMost(1f),
+                    confidence = 0.3f
+                )
+            }
+
+            val cx = (weightedX / totalWeight).coerceIn(0.2f, 0.8f)
+            val cy = (weightedY / totalWeight).coerceIn(0.2f, 0.8f)
+
+            CropSuggestion(
+                centerX = cx,
+                centerY = cy,
+                width = 1f,
+                height = (1f / safeRatio).coerceAtMost(1f),
+                confidence = min(1f, totalWeight / 3f)
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Smart crop analysis failed", e)
+            val safeRatio = targetAspectRatio.coerceAtLeast(0.01f)
+            CropSuggestion(
+                centerX = 0.5f, centerY = 0.5f,
+                width = 1f, height = (1f / safeRatio).coerceAtMost(1f),
+                confidence = 0.3f
+            )
+        } finally {
+            retrieverLease.close()
+        }
+    }
+
+    private fun luminance(pixel: Int): Float {
+        return (Color.red(pixel) * 0.299f + Color.green(pixel) * 0.587f + Color.blue(pixel) * 0.114f) / 255f
+    }
+
+    // ---- Style Transfer ----
+
+    /**
+     * Analyzes a video frame and generates a cinematic color grade based on
+     * the frame's existing color characteristics. Returns a set of effects
+     * that transform the look into a professional color-graded style.
+     */
+    suspend fun analyzeAndApplyStyle(
+        videoUri: Uri
+    ): StyleTransferResult = withContext(Dispatchers.IO) {
+        val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(videoUri))
+        val retriever = retrieverLease.resource
+        try {
+            retriever.setDataSource(context, videoUri)
+            val durationMs = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_DURATION
+            )?.toLongOrNull() ?: return@withContext StyleTransferResult()
+
+            // Sample 3 frames across the clip for stable analysis
+            val frames = listOf(durationMs / 4, durationMs / 2, durationMs * 3 / 4)
+            var avgLum = 0f; var avgSat = 0f; var avgTemp = 0f; var frameCount = 0
+
+            for (ms in frames) {
+                val frame = retriever.getFrameAtTime(
+                    ms * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                ) ?: continue
+                val scaled = Bitmap.createScaledBitmap(frame, 64, 36, true)
+                if (scaled !== frame) frame.recycle()
+
+                var lumSum = 0f; var satSum = 0f; var tempSum = 0f
+                val n = scaled.width * scaled.height
+                val pixels = IntArray(n)
+                scaled.getPixels(pixels, 0, scaled.width, 0, 0, scaled.width, scaled.height)
+                scaled.recycle()
+                for (p in pixels) {
+                    val r = Color.red(p) / 255f
+                    val g = Color.green(p) / 255f
+                    val b = Color.blue(p) / 255f
+                    lumSum += r * 0.299f + g * 0.587f + b * 0.114f
+                    val cMax = max(r, max(g, b))
+                    val cMin = min(r, min(g, b))
+                    satSum += if (cMax > 0f) (cMax - cMin) / cMax else 0f
+                    tempSum += (r - b)
+                }
+                avgLum += lumSum / n
+                avgSat += satSum / n
+                avgTemp += tempSum / n
+                frameCount++
+            }
+
+            if (frameCount == 0) return@withContext StyleTransferResult()
+            avgLum /= frameCount
+            avgSat /= frameCount
+            avgTemp /= frameCount
+
+            // Determine cinematic adjustments based on analysis
+            val effects = mutableListOf<Pair<String, Float>>()
+
+            // Contrast: boost if flat, reduce if too harsh
+            val contrastAdj = when {
+                avgLum in 0.35f..0.65f -> 1.15f // mid-tone: slight boost
+                avgLum < 0.35f -> 1.10f // dark: gentle boost
+                else -> 0.95f // bright: slight reduce
+            }
+            effects.add("contrast" to contrastAdj)
+
+            // Temperature: push toward cinematic teal/orange split
+            val tempAdj = when {
+                avgTemp > 0.1f -> -0.08f // already warm: cool shadows slightly
+                avgTemp < -0.1f -> 0.05f // already cool: warm highlights slightly
+                else -> -0.03f // neutral: slight cool shift (cinematic)
+            }
+            effects.add("temperature" to tempAdj)
+
+            // Saturation: cinematic = slightly desaturated
+            val satAdj = when {
+                avgSat > 0.4f -> 0.82f // over-saturated: pull back
+                avgSat < 0.15f -> 1.1f // too flat: slight boost
+                else -> 0.92f // normal: slight desat for cinema look
+            }
+            effects.add("saturation" to satAdj)
+
+            // Exposure: normalize mid-tones
+            val exposureAdj = when {
+                avgLum < 0.3f -> 0.15f // dark: lift slightly
+                avgLum > 0.7f -> -0.1f // bright: pull down
+                else -> 0f
+            }
+            if (abs(exposureAdj) > 0.01f) effects.add("exposure" to exposureAdj)
+
+            // Vignette for cinematic framing
+            effects.add("vignette_intensity" to 0.3f)
+            effects.add("vignette_radius" to 0.8f)
+
+            // Film grain for organic texture
+            effects.add("film_grain" to 0.04f)
+
+            val styleName = when {
+                avgTemp < -0.1f && avgSat < 0.25f -> "Noir"
+                avgTemp > 0.15f && avgSat > 0.35f -> "Warm Cinematic"
+                avgLum < 0.35f -> "Moody"
+                avgSat > 0.4f -> "Vibrant Film"
+                else -> "Cinematic"
+            }
+
+            StyleTransferResult(
+                styleName = styleName,
+                contrast = contrastAdj,
+                temperature = tempAdj,
+                saturation = satAdj,
+                exposure = exposureAdj,
+                vignetteIntensity = 0.3f,
+                vignetteRadius = 0.8f,
+                filmGrain = 0.04f,
+                confidence = 0.85f
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Style transfer analysis failed", e)
+            StyleTransferResult()
+        } finally {
+            retrieverLease.close()
+        }
+    }
+
+    // ---- Neural Upscale ----
+
+    /**
+     * Analyzes source video resolution and returns recommended upscale settings.
+     * Applies sharpening to compensate for upscaling artifacts.
+     */
+    suspend fun analyzeForUpscale(
+        videoUri: Uri
+    ): UpscaleResult = withContext(Dispatchers.IO) {
+        val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(videoUri))
+        val retriever = retrieverLease.resource
+        try {
+            retriever.setDataSource(context, videoUri)
+            val width = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH
+            )?.toIntOrNull() ?: return@withContext UpscaleResult()
+            val height = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT
+            )?.toIntOrNull() ?: return@withContext UpscaleResult()
+
+            val sourcePixels = width * height
+            val targetResolution = when {
+                sourcePixels <= 480 * 360 -> com.novacut.editor.model.Resolution.HD_720P
+                sourcePixels <= 1280 * 720 -> com.novacut.editor.model.Resolution.FHD_1080P
+                sourcePixels <= 1920 * 1080 -> com.novacut.editor.model.Resolution.QHD_1440P
+                sourcePixels <= 2560 * 1440 -> com.novacut.editor.model.Resolution.UHD_4K
+                else -> null // Already 4K+
+            }
+
+            // Sharpen strength inversely proportional to source resolution
+            val sharpenStrength = when {
+                sourcePixels <= 480 * 360 -> 0.8f
+                sourcePixels <= 1280 * 720 -> 0.6f
+                sourcePixels <= 1920 * 1080 -> 0.4f
+                else -> 0.3f
+            }
+
+            UpscaleResult(
+                sourceWidth = width,
+                sourceHeight = height,
+                targetResolution = targetResolution,
+                sharpenStrength = sharpenStrength,
+                confidence = if (targetResolution != null) 0.9f else 0f
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Upscale analysis failed", e)
+            UpscaleResult()
+        } finally {
+            retrieverLease.close()
+        }
+    }
+
+    // ---- Shared Utilities ----
+
+    /**
+     * Calculate the visual difference between two frames.
+     * Returns a value between 0 (identical) and 1 (completely different).
+     */
+    private fun calculateFrameDifference(frame1: Bitmap, frame2: Bitmap): Float {
+        val width = minOf(frame1.width, frame2.width, 64)
+        val height = minOf(frame1.height, frame2.height, 36)
+
+        val scaled1 = Bitmap.createScaledBitmap(frame1, width, height, true)
+        val scaled2 = try {
+            Bitmap.createScaledBitmap(frame2, width, height, true)
+        } catch (e: Exception) {
+            if (scaled1 !== frame1) scaled1.recycle()
+            throw e
+        }
+
+        try {
+            val totalPixels = width * height
+            val pixels1 = IntArray(totalPixels)
+            val pixels2 = IntArray(totalPixels)
+            scaled1.getPixels(pixels1, 0, width, 0, 0, width, height)
+            scaled2.getPixels(pixels2, 0, width, 0, 0, width, height)
+
+            var totalDiff = 0L
+            for (i in 0 until totalPixels) {
+                val p1 = pixels1[i]
+                val p2 = pixels2[i]
+                val dr = abs((p1 shr 16 and 0xFF) - (p2 shr 16 and 0xFF))
+                val dg = abs((p1 shr 8 and 0xFF) - (p2 shr 8 and 0xFF))
+                val db = abs((p1 and 0xFF) - (p2 and 0xFF))
+                totalDiff += (dr + dg + db).toLong()
+            }
+
+            return (totalDiff.toFloat() / totalPixels / 765f).coerceIn(0f, 1f)
+        } finally {
+            if (scaled1 !== frame1) scaled1.recycle()
+            if (scaled2 !== frame2) scaled2.recycle()
+        }
+    }
+
+    // ---- AI Auto-Edit / Highlight Reel ----
+
+    suspend fun generateAutoEdit(
+        clips: List<AutoEditClip>,
+        musicUri: Uri?,
+        targetDurationMs: Long,
+        intent: AutoEditIntent = AutoEditIntent.HIGHLIGHT_REEL,
+        onProgress: (Float) -> Unit = {}
+    ): AutoEditResult = withContext(Dispatchers.IO) {
+        if (clips.isEmpty() || targetDurationMs <= 0) {
+            return@withContext AutoEditResult()
+        }
+
+        onProgress(0.05f)
+
+        // Analyze bounded windows across each source instead of trusting one midpoint.
+        val windowSpecs = clips.flatMap { clip ->
+            autoEditWindowRanges(clip.sourceStartMs, clip.sourceEndMs).mapIndexed { index, range ->
+                Triple(clip, index, range)
+            }
+        }.take(AutoEditPlanner.MAX_WINDOWS)
+        val windows = mutableListOf<AutoEditWindow>()
+        for ((analyzedIndex, spec) in windowSpecs.withIndex()) {
+            ensureActive()
+            val (clip, windowIndex, range) = spec
+            val retrieverLease = CodecInstanceBudget.acquireRetriever(context.contentResolver.getType(clip.uri))
+            val retriever = retrieverLease.resource
+            try {
+                var qualityScore = 0f
+                var motionScore = 0f
+                var faceScore = 0f
+
+                try {
+                    retriever.setDataSource(context, clip.uri)
+                    val midTime = range.first + (range.last + 1L - range.first) / 2L
+
+                    val frame = retriever.getFrameAtTime(
+                        midTime * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                    )
+                    if (frame != null) {
+                        // All bitmaps recycled in finally so a throw from createScaledBitmap
+                        // or any scoring step can't leak the frame/scaled copies.
+                        var scaled: Bitmap? = null
+                        var frame2: Bitmap? = null
+                        var scaled2: Bitmap? = null
+                        try {
+                            scaled = Bitmap.createScaledBitmap(frame, 64, 36, true)
+
+                            // Sharpness via Laplacian variance approximation
+                            qualityScore = computeSharpness(scaled)
+
+                            // Face presence via skin-tone pixel ratio
+                            faceScore = detectSkinToneRatio(scaled)
+
+                            // Motion: compare two frames
+                            frame2 = retriever.getFrameAtTime(
+                                min(midTime + 500L, range.last) * 1000L,
+                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                            )
+                            if (frame2 != null) {
+                                scaled2 = Bitmap.createScaledBitmap(frame2, 64, 36, true)
+                                motionScore = calculateFrameDifference(scaled, scaled2)
+                            }
+                        } finally {
+                            if (scaled != null && scaled !== frame) scaled.recycle()
+                            if (scaled2 != null && scaled2 !== frame2) scaled2.recycle()
+                            frame.recycle()
+                            frame2?.recycle()
+                        }
+                    }
+                } catch (e: Exception) {
+                    AppLog.w(TAG, "Auto-edit clip quality scoring failed", e)
+                    // Score remains 0 — clip will be ranked low
+                }
+
+                windows += AutoEditWindow(
+                    id = "${clip.clipFingerprint}:$windowIndex:${range.first}",
+                    clipId = clip.clipId,
+                    clipFingerprint = clip.clipFingerprint,
+                    sourceOrder = clip.sourceOrder,
+                    sourceStartMs = range.first,
+                    sourceEndMs = range.last + 1L,
+                    scores = AutoEditScoreComponents(
+                        visualQuality = qualityScore,
+                        motion = motionScore,
+                        subjectPresence = faceScore,
+                        audioEnergy = 0f,
+                        keywordRelevance = 0f
+                    )
+                )
+
+                onProgress(0.05f + 0.5f * (analyzedIndex + 1) / windowSpecs.size.coerceAtLeast(1))
+            } finally {
+                retrieverLease.close()
+            }
+        }
+
+        // Phase 2: Optionally detect beats for synced cuts
+        var beatPositions: List<Long> = emptyList()
+        if (intent == AutoEditIntent.BEAT_SYNC && musicUri != null) {
+            try {
+                val extractor = MediaExtractor()
+                try {
+                    extractor.setDataSource(context, musicUri, null)
+                    var audioIndex = -1
+                    var format: MediaFormat? = null
+                    for (i in 0 until extractor.trackCount) {
+                        val tf = extractor.getTrackFormat(i)
+                        if (tf.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                            audioIndex = i; format = tf; break
+                        }
+                    }
+                    if (audioIndex >= 0 && format != null) {
+                        extractor.selectTrack(audioIndex)
+                        val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                        val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                        val mime = format.getString(MediaFormat.KEY_MIME)
+
+                        if (mime != null) {
+                            val decoderLease = CodecInstanceBudget.acquireDecoder(mime)
+                            val decoder = decoderLease.resource
+                            val pcmChunks = mutableListOf<ShortArray>()
+                            var totalPcm = 0
+                            try {
+                                decoder.configure(format, null, null, 0)
+                                decoder.start()
+                                val bufferInfo = MediaCodec.BufferInfo()
+                                var eos = false
+                                while (!eos) {
+                                    ensureActive()
+                                    val inIdx = decoder.dequeueInputBuffer(10000)
+                                    if (inIdx >= 0) {
+                                        val buf = decoder.getInputBuffer(inIdx) ?: continue
+                                        val size = extractor.readSampleData(buf, 0)
+                                        if (size < 0) {
+                                            decoder.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                            eos = true
+                                        } else {
+                                            decoder.queueInputBuffer(inIdx, 0, size, extractor.sampleTime, 0)
+                                            extractor.advance()
+                                        }
+                                    }
+                                    var outIdx = decoder.dequeueOutputBuffer(bufferInfo, 10000)
+                                    while (outIdx >= 0) {
+                                        val outBuf = decoder.getOutputBuffer(outIdx)
+                                        if (outBuf != null && bufferInfo.size > 0) {
+                                            val shortBuf = outBuf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+                                            val arr = ShortArray(shortBuf.remaining())
+                                            shortBuf.get(arr)
+                                            if (AudioDecodeBudget.exceedsBudget(totalPcm, arr.size)) {
+                                                // Fail closed: drop the partial PCM and proceed
+                                                // without beats (mirrors the catch below).
+                                                AppLog.w(TAG, "Auto-edit beat PCM exceeds the in-memory budget; proceeding without beats")
+                                                pcmChunks.clear()
+                                                totalPcm = 0
+                                                eos = true
+                                                decoder.releaseOutputBuffer(outIdx, false)
+                                                break
+                                            }
+                                            pcmChunks.add(arr)
+                                            totalPcm += arr.size
+                                        }
+                                        decoder.releaseOutputBuffer(outIdx, false)
+                                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                                            eos = true; break
+                                        }
+                                        outIdx = decoder.dequeueOutputBuffer(bufferInfo, 0)
+                                    }
+                                }
+                            } finally {
+                                decoderLease.close()
+                            }
+                            if (totalPcm > 0) {
+                                val allPcm = ShortArray(totalPcm)
+                                var pcmOff = 0
+                                for (chunk in pcmChunks) {
+                                    System.arraycopy(chunk, 0, allPcm, pcmOff, chunk.size)
+                                    pcmOff += chunk.size
+                                }
+                                beatPositions = AudioEffectsEngine.detectBeats(allPcm, sampleRate, channels)
+                                    .filter { it <= targetDurationMs }
+                            }
+                        }
+                    }
+                } finally {
+                    extractor.release()
+                }
+            } catch (e: Exception) { AppLog.w(TAG, "Beat detection for auto-edit failed, proceeding without beats", e) }
+        }
+
+        onProgress(0.75f)
+
+        val plan = AutoEditPlanner().plan(
+            AutoEditPlanRequest(
+                windows = windows,
+                targetDurationMs = targetDurationMs,
+                intent = intent,
+                beatPositionsMs = if (intent == AutoEditIntent.BEAT_SYNC) beatPositions else emptyList()
+            )
+        )
+        val clipIndexById = clips.mapIndexed { index, clip -> clip.clipId to index }.toMap()
+        val segments = plan.segments.mapNotNull { proposal ->
+            val clipIndex = clipIndexById[proposal.clipId] ?: return@mapNotNull null
+            AutoEditSegment(
+                clipIndex = clipIndex,
+                clipId = proposal.clipId,
+                clipFingerprint = proposal.clipFingerprint,
+                trimStartMs = proposal.sourceStartMs,
+                trimEndMs = proposal.sourceEndMs,
+                timelineStartMs = proposal.timelineStartMs,
+                timelineEndMs = proposal.timelineEndMs,
+                scoreComponents = proposal.scoreComponents,
+                score = proposal.score,
+                confidence = proposal.confidence,
+                rationale = proposal.rationale,
+                beatAligned = proposal.beatAligned
+            )
+        }
+
+        onProgress(1f)
+        AutoEditResult(
+            segments = segments,
+            transitionPoints = segments.drop(1).map { it.timelineStartMs },
+            intent = intent,
+            requestedDurationMs = targetDurationMs,
+            plannedDurationMs = plan.plannedDurationMs,
+            confidence = plan.confidence,
+            beatSupport = plan.beatSupport,
+            warnings = plan.warnings,
+            keywordSupport = AutoEditKeywordSupport.UNSUPPORTED
+        )
+    }
+
+    /**
+     * Compute sharpness score via Laplacian variance approximation.
+     * Higher values = sharper image. Returns 0..1 normalized.
+     */
+    private fun computeSharpness(bitmap: Bitmap): Float {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w < 3 || h < 3) return 0f
+
+        var varianceSum = 0.0
+        var count = 0
+
+        for (y in 1 until h - 1) {
+            for (x in 1 until w - 1) {
+                // Laplacian kernel: center*4 - top - bottom - left - right
+                val c = luminance(bitmap.getPixel(x, y))
+                val t = luminance(bitmap.getPixel(x, y - 1))
+                val b = luminance(bitmap.getPixel(x, y + 1))
+                val l = luminance(bitmap.getPixel(x - 1, y))
+                val r = luminance(bitmap.getPixel(x + 1, y))
+                val laplacian = 4f * c - t - b - l - r
+                varianceSum += laplacian * laplacian
+                count++
+            }
+        }
+
+        val variance = if (count > 0) varianceSum / count else 0.0
+        // Normalize: typical sharp image has variance ~0.01-0.05
+        return (variance / 0.05).coerceIn(0.0, 1.0).toFloat()
+    }
+
+    /**
+     * Detect skin-tone pixel ratio as a simple face presence heuristic.
+     * Uses YCbCr color space skin-tone ranges.
+     * Returns 0..1 where higher = more skin-tone pixels detected.
+     */
+    private fun detectSkinToneRatio(bitmap: Bitmap): Float {
+        val w = bitmap.width
+        val h = bitmap.height
+        var skinPixels = 0
+        var total = 0
+
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                val pixel = bitmap.getPixel(x, y)
+                val r = Color.red(pixel)
+                val g = Color.green(pixel)
+                val b = Color.blue(pixel)
+
+                // Simple skin-tone detection in RGB space
+                // Skin pixels: R > 95, G > 40, B > 20, max-min > 15, R > G, R > B
+                if (r > 95 && g > 40 && b > 20 &&
+                    max(r, max(g, b)) - min(r, min(g, b)) > 15 &&
+                    r > g && r > b &&
+                    abs(r - g) > 15
+                ) {
+                    skinPixels++
+                }
+                total++
+            }
+        }
+
+        // Face typically occupies 5-30% of frame
+        val ratio = if (total > 0) skinPixels.toFloat() / total else 0f
+        // Normalize: 0.05 ratio = low confidence, 0.2+ = high confidence
+        return (ratio / 0.2f).coerceIn(0f, 1f)
+    }
+
+}
+
+/**
+ * Per-axis pan limits for a reframe from [srcRatio] to [tgtRatio].
+ *
+ * A cross-orientation reframe (e.g. 16:9 -> 9:16) zooms to fill one axis, so the
+ * crop window has headroom only on the other axis. A symmetric clamp both
+ * over-restricts the axis that should track the subject and permits motion on
+ * the axis that fills the frame. Returns (maxPanX, maxPanY) as fractions of the
+ * half pan range.
+ */
+internal fun reframePanLimits(srcRatio: Float, tgtRatio: Float): Pair<Float, Float> {
+    if (srcRatio <= 0f || tgtRatio <= 0f) return 0f to 0f
+    val baseZoom = when {
+        tgtRatio < srcRatio -> srcRatio / tgtRatio
+        tgtRatio > srcRatio -> tgtRatio / srcRatio
+        else -> 1f
+    }
+    val panRange = if (baseZoom > 1f) 1f - (1f / baseZoom) else 0f
+    // Taller target fills height -> pan horizontally; wider target fills width -> pan vertically.
+    val maxPanX = if (tgtRatio < srcRatio) panRange else 0f
+    val maxPanY = if (tgtRatio > srcRatio) panRange else 0f
+    return maxPanX to maxPanY
+}
+
+/**
+ * In-place iterative radix-2 Cooley-Tukey FFT. [real] and [imag] must be the
+ * same power-of-two length. On return they hold the transform. Pure, so it is
+ * unit-testable against a reference DFT.
+ */
+internal fun radix2Fft(real: FloatArray, imag: FloatArray) {
+    val n = real.size
+    if (n < 2 || (n and (n - 1)) != 0) return
+    // Bit-reversal permutation.
+    var j = 0
+    for (i in 1 until n) {
+        var bit = n shr 1
+        while (j and bit != 0) {
+            j = j xor bit
+            bit = bit shr 1
+        }
+        j = j or bit
+        if (i < j) {
+            val tr = real[i]; real[i] = real[j]; real[j] = tr
+            val ti = imag[i]; imag[i] = imag[j]; imag[j] = ti
+        }
+    }
+    // Butterfly stages.
+    var len = 2
+    while (len <= n) {
+        val ang = -2.0 * kotlin.math.PI / len
+        val wr = kotlin.math.cos(ang).toFloat()
+        val wi = kotlin.math.sin(ang).toFloat()
+        var i = 0
+        while (i < n) {
+            var curR = 1f
+            var curI = 0f
+            val half = len / 2
+            for (k in 0 until half) {
+                val aR = real[i + k]
+                val aI = imag[i + k]
+                val bR = real[i + k + half] * curR - imag[i + k + half] * curI
+                val bI = real[i + k + half] * curI + imag[i + k + half] * curR
+                real[i + k] = aR + bR
+                imag[i + k] = aI + bI
+                real[i + k + half] = aR - bR
+                imag[i + k + half] = aI - bI
+                val nextR = curR * wr - curI * wi
+                curI = curR * wi + curI * wr
+                curR = nextR
+            }
+            i += len
+        }
+        len = len shl 1
+    }
+}
+
+// Data classes for AI features
+
+/**
+ * How a [CaptionEntry] got its text — the difference between a transcript and a
+ * measurement. Energy segmentation can tell when someone spoke; it cannot tell
+ * what they said, so it must never hand back invented text for the project to
+ * save, render, and burn into an export.
+ */
+enum class CaptionSource {
+    /** A speech-to-text model produced the words. */
+    TRANSCRIBED,
+
+    /** Only the start/end times are real. [CaptionEntry.text] is empty by construction. */
+    TIMING_ONLY,
+}
+
+data class CaptionEntry(
+    val startMs: Long,
+    val endMs: Long,
+    val text: String,
+    /**
+     * How strong the evidence for this caption is, where the producer can say. The
+     * Whisper path stamped a flat 0.95 on every caption regardless of what the model
+     * returned, which is not a confidence, so it reports null instead of a number the
+     * UI could act on. The energy path measures real relative loudness.
+     */
+    val confidence: Float? = null,
+    val languageCode: String = "en",
+    val source: CaptionSource = CaptionSource.TRANSCRIBED
+)
+
+/** What an auto-caption run actually established. */
+sealed interface CaptionOutcome {
+    /** The run completed. [captions] may legitimately be empty: nothing was heard. */
+    data class Analyzed(val captions: List<CaptionEntry>) : CaptionOutcome
+
+    /** The run could not complete. This is not silence and must not be reported as it. */
+    data class Failed(val reason: String) : CaptionOutcome
+}
+
+data class CaptionStyle(
+    val fontSize: Float = 36f,
+    val textColor: Long = 0xFFFFFFFF,
+    val backgroundColor: Long = 0xCC000000,
+    val strokeColor: Long = 0xFF000000,
+    val strokeWidth: Float = 1.5f,
+    val bold: Boolean = true,
+    val positionY: Float = 0.85f
+)
+
+data class SceneChange(
+    val timestampMs: Long,
+    val confidence: Float,
+    val type: SceneChangeType
+)
+
+enum class SceneChangeType {
+    HARD_CUT, TRANSITION, FADE
+}
+
+data class TrackingRegion(
+    val centerX: Float = 0.5f,
+    val centerY: Float = 0.5f,
+    val width: Float = 0.3f,
+    val height: Float = 0.3f
+)
+
+data class TrackingResult(
+    val timestampMs: Long,
+    val region: TrackingRegion,
+    val confidence: Float
+)
+
+data class CropSuggestion(
+    val centerX: Float = 0.5f,
+    val centerY: Float = 0.5f,
+    val width: Float = 1f,
+    val height: Float = 1f,
+    val confidence: Float = 0.5f
+)
+
+data class ColorCorrection(
+    val brightness: Float = 0f,      // -0.5..0.5
+    val contrast: Float = 1f,        // 0.5..2.5
+    val saturation: Float = 1f,      // 0.5..2.0
+    val temperature: Float = 0f,     // -1..1
+    val confidence: Float = 0f
+)
+
+data class NoiseProfile(
+    val noiseFloorDb: Float = -60f,
+    val signalToNoiseDb: Float = 60f,
+    val recommendedReduction: Float = 0f,
+    val noiseGateThreshold: Float = 0f,
+    val confidence: Float = 0f
+)
+
+data class StyleTransferResult(
+    val styleName: String = "Unknown",
+    val contrast: Float = 1f,
+    val temperature: Float = 0f,
+    val saturation: Float = 1f,
+    val exposure: Float = 0f,
+    val vignetteIntensity: Float = 0f,
+    val vignetteRadius: Float = 0.8f,
+    val filmGrain: Float = 0f,
+    val confidence: Float = 0f
+)
+
+data class UpscaleResult(
+    val sourceWidth: Int = 0,
+    val sourceHeight: Int = 0,
+    val targetResolution: com.novacut.editor.model.Resolution? = null,
+    val sharpenStrength: Float = 0.5f,
+    val confidence: Float = 0f
+)
+
+data class BackgroundAnalysis(
+    val backgroundColor: Int = 0,
+    val isGreenScreen: Boolean = false,
+    val isBlueScreen: Boolean = false,
+    val recommendedSimilarity: Float = 0.4f,
+    val recommendedSmoothness: Float = 0.1f,
+    val recommendedSpill: Float = 0.1f,
+    val confidence: Float = 0f
+)
+
+// ---- AI Auto-Edit / Highlight Reel ----
+
+data class AutoEditClip(
+    val clipId: String,
+    val clipFingerprint: String,
+    val uri: Uri,
+    val sourceStartMs: Long,
+    val sourceEndMs: Long,
+    val sourceOrder: Int
+)
+
+data class AutoEditResult(
+    val segments: List<AutoEditSegment> = emptyList(),
+    val transitionPoints: List<Long> = emptyList(),
+    val intent: AutoEditIntent = AutoEditIntent.HIGHLIGHT_REEL,
+    val requestedDurationMs: Long = 0L,
+    val plannedDurationMs: Long = 0L,
+    val confidence: Float = 0f,
+    val beatSupport: AutoEditBeatSupport = AutoEditBeatSupport.NOT_REQUESTED,
+    val warnings: List<AutoEditPlanWarning> = emptyList(),
+    /** Creative-brief text is intentionally not represented as semantic matching. */
+    val keywordSupport: AutoEditKeywordSupport = AutoEditKeywordSupport.UNSUPPORTED
+)
+
+data class AutoEditSegment(
+    val clipIndex: Int,
+    val clipId: String,
+    val clipFingerprint: String,
+    val trimStartMs: Long,
+    val trimEndMs: Long,
+    val timelineStartMs: Long,
+    val timelineEndMs: Long,
+    val scoreComponents: AutoEditScoreComponents,
+    val score: Float,
+    val confidence: Float,
+    val rationale: List<String>,
+    val beatAligned: Boolean
+)
+
+enum class AutoEditKeywordSupport { UNSUPPORTED }
+
+/**
+ * Deterministic, bounded sampling plan used by Auto Edit analysis.
+ * Windows never overlap, never exceed [preferredWindowMs], and sample head/middle/tail
+ * while capping decoder work for long footage.
+ */
+internal fun autoEditWindowRanges(
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    maxWindows: Int = 12,
+    preferredWindowMs: Long = 4_000L
+): List<LongRange> {
+    require(sourceStartMs >= 0L && sourceEndMs > sourceStartMs)
+    require(maxWindows > 0 && preferredWindowMs > 0L)
+    val durationMs = sourceEndMs - sourceStartMs
+    val count = minOf(maxWindows.toLong(), (durationMs + preferredWindowMs - 1L) / preferredWindowMs)
+        .toInt()
+        .coerceAtLeast(1)
+    if (durationMs > maxWindows.toLong() * preferredWindowMs) {
+        val availableStartRange = durationMs - preferredWindowMs
+        return (0 until count).map { index ->
+            val offset = if (count == 1) 0L else availableStartRange * index / (count - 1L)
+            val start = sourceStartMs + offset
+            start..(start + preferredWindowMs - 1L)
+        }
+    }
+    return (0 until count).map { index ->
+        val start = sourceStartMs + durationMs * index / count
+        val endExclusive = sourceStartMs + durationMs * (index + 1L) / count
+        start..(endExclusive - 1L)
+    }
+}
