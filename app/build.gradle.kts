@@ -28,12 +28,12 @@ val bundleTaskRequested = gradle.startParameter.taskNames.any { taskName ->
 
 android {
     namespace = "info.bigwizardmedia.wizardcut"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "info.bigwizardmedia.wizardcut"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 299
         versionName = "3.81.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

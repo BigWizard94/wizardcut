@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "info.bigwizardmedia.wizardcut.baselineprofile"
-    compileSdk = 37
+    compileSdk = 36
     targetProjectPath = ":app"
 
     defaultConfig {
         minSdk = 28
-        targetSdk = 37
+        targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
     }
