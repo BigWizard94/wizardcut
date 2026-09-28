@@ -9,7 +9,7 @@ class IncomingIntentIoBoundaryTest {
 
     @Test
     fun incomingMediaAndDocumentHandlersScheduleProviderWorkOffMainThread() {
-        val source = locate("app/src/main/java/com/novacut/editor/MainActivity.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/MainActivity.kt").readText()
         val mediaHandler = source.between(
             "    private fun handleIncomingMediaIntent",
             "    private fun handleIncomingDocumentIntent"
@@ -32,7 +32,7 @@ class IncomingIntentIoBoundaryTest {
 
     @Test
     fun providerResolutionRemainsInsideExplicitIoHelpers() {
-        val source = locate("app/src/main/java/com/novacut/editor/MainActivity.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/MainActivity.kt").readText()
         val mediaHelper = source.between(
             "    private fun readableIncomingMediaItems",
             "    private fun readableIncomingDocumentItems"

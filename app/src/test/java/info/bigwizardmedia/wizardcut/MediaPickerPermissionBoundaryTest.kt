@@ -10,7 +10,7 @@ class MediaPickerPermissionBoundaryTest {
     @Test
     fun batchPickerTracksAndReleasesOnlyAcquiredPersistedPermissions() {
         val source = locate(
-            "app/src/main/java/com/novacut/editor/ui/mediapicker/MediaPicker.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/mediapicker/MediaPicker.kt"
         ).readText()
 
         assertTrue(source.contains("var sequencePersistedUris by remember { mutableStateOf<Set<Uri>>(emptySet()) }"))
@@ -32,7 +32,7 @@ class MediaPickerPermissionBoundaryTest {
     @Test
     fun droppedBatchInsufficientSpaceUsesTheStorageMessage() {
         val source = locate(
-            "app/src/main/java/com/novacut/editor/ui/mediapicker/MediaPicker.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/mediapicker/MediaPicker.kt"
         ).readText()
         val strings = locate("app/src/main/res/values/strings.xml").readText()
 
@@ -45,7 +45,7 @@ class MediaPickerPermissionBoundaryTest {
     @Test
     fun rejectedAudioPickReleasesItsPersistedPermission() {
         val source = locate(
-            "app/src/main/java/com/novacut/editor/ui/mediapicker/MediaPicker.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/mediapicker/MediaPicker.kt"
         ).readText()
 
         assertTrue(source.contains("if (persisted)"))

@@ -1,15 +1,15 @@
-# ClearCut Privacy Policy
+# WizardCut Privacy Policy
 
 **Last updated: 2026-07-29**
 
-ClearCut is a local-first Android video editor. Your projects, media, and edits
-stay on your device. ClearCut has no account system, no advertising, and no
+WizardCut is a local-first Android video editor. Your projects, media, and edits
+stay on your device. WizardCut has no account system, no advertising, and no
 analytics SDK. Nothing in this policy is aspirational: every statement below
 describes what the shipped app does.
 
-## What ClearCut stores, and where
+## What WizardCut stores, and where
 
-Everything in this section is stored in ClearCut's private app storage on your
+Everything in this section is stored in WizardCut's private app storage on your
 device. None of it is transmitted anywhere unless a section below says
 otherwise.
 
@@ -42,21 +42,21 @@ Only these, and each one requires you to act first:
   initialization errors). Your frames and pixels never leave the device.
   Revoking consent closes any running task and blocks it from starting again.
 - **App update check**: off by default. When enabled in Settings → Updates,
-  ClearCut makes a single TLS request to the public GitHub releases API to
+  WizardCut makes a single TLS request to the public GitHub releases API to
   compare the latest tag with your installed version. No data is stored and no
   APK is downloaded or installed.
 - **Model downloads**: fetching a Whisper or segmentation model contacts the
   model host recorded in `docs/models.md`. You start the download; nothing about
   your projects is sent with it.
 
-ClearCut integrates no advertising SDK, no attribution SDK, and no usage
+WizardCut integrates no advertising SDK, no attribution SDK, and no usage
 analytics. The "opt-in usage telemetry" row in the in-app privacy dashboard is a
 placeholder for a future provider: no telemetry provider is integrated today,
 and the row exists so it cannot be added silently.
 
 ## Backup and device transfer
 
-ClearCut participates in Android's built-in backup. The **cloud** backup scope is
+WizardCut participates in Android's built-in backup. The **cloud** backup scope is
 deliberately limited to your project documents (the project database and autosave
 files). Android Auto Backup is capped at 25 MB per app and fails the whole backup
 when that is exceeded, so generated timeline media: freeze frames, voiceovers,
@@ -68,7 +68,7 @@ your imported media copies. You can also export a project archive yourself at an
 time, which contains the complete project.
 
 Cloud backup is disabled entirely if your device lacks backup encryption
-capabilities. You can turn Android backup off for ClearCut in your device's
+capabilities. You can turn Android backup off for WizardCut in your device's
 system settings.
 
 ## Permissions
@@ -82,7 +82,7 @@ system settings.
 | `INTERNET`, `ACCESS_NETWORK_STATE` | Model downloads, the optional update check, and consent-gated cloud tools |
 
 Media is read through the Android photo picker and Storage Access Framework, so
-ClearCut requests no broad storage permission and can only see files you pick.
+WizardCut requests no broad storage permission and can only see files you pick.
 
 The `NEARBY_WIFI_DEVICES` and `ACCESS_LOCAL_NETWORK` permissions appear **only**
 in the separate `streaming` build flavor, which is not what is published on Play
@@ -97,25 +97,25 @@ they appear.
 - **AI models**: Settings → AI Models → Remove model.
 - **Diagnostic, crash, and process-death records**: clearing app storage removes
   them; they are also capped and rotate automatically.
-- **Everything**: Android Settings → Apps → ClearCut → Storage → Clear storage
-  removes all ClearCut data from the device. Uninstalling does the same.
+- **Everything**: Android Settings → Apps → WizardCut → Storage → Clear storage
+  removes all WizardCut data from the device. Uninstalling does the same.
 
-Because ClearCut has no account and stores nothing about you on a server, there
+Because WizardCut has no account and stores nothing about you on a server, there
 is no server-side copy to request deletion of.
 
 ## Children
 
-ClearCut is not directed at children and collects no personal information from
+WizardCut is not directed at children and collects no personal information from
 anyone, including children.
 
 ## Changes to this policy
 
-Changes are published in this file in the ClearCut repository, and its history is
+Changes are published in this file in the WizardCut repository, and its history is
 public. The "Last updated" date above changes whenever the substance changes.
 
 ## Contact
 
-Questions about this policy, or about anything ClearCut does with your data:
+Questions about this policy, or about anything WizardCut does with your data:
 
-- Open an issue at <https://github.com/SysAdminDoc/ClearCut/issues>
+- Open an issue at <https://github.com/SysAdminDoc/WizardCut/issues>
 - Email: matt_parker@outlook.com

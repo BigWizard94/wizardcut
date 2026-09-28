@@ -1,4 +1,4 @@
-package com.clearcut.baselineprofile
+package info.bigwizardmedia.wizardcut.baselineprofile
 
 import androidx.benchmark.macro.BaselineProfileMode
 import androidx.benchmark.macro.CompilationMode

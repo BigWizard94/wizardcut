@@ -10,10 +10,10 @@ class PredictiveBackContractTest {
     @Test
     fun `editor consumes predictive back with cancellation-safe preview state`() {
         val screen = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/EditorScreen.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorScreen.kt"
         ).readText().normalizeLineEndings()
         val breadcrumb = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/CompoundNavBreadcrumb.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/CompoundNavBreadcrumb.kt"
         ).readText().normalizeLineEndings()
 
         assertTrue(screen.contains("PredictiveBackHandler(enabled = canConsumeEditorBack)"))
@@ -31,7 +31,7 @@ class PredictiveBackContractTest {
     @Test
     fun `nested back precedence remains stable until the gesture commits`() {
         val screen = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/EditorScreen.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorScreen.kt"
         ).readText().normalizeLineEndings()
         val action = screen.substring(
             screen.indexOf("fun consumeEditorBack()"),

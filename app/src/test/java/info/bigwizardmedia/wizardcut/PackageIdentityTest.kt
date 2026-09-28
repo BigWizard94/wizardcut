@@ -34,8 +34,8 @@ class PackageIdentityTest {
         val applicationId = registry.getString("applicationId")
         val manifest = locate("app/src/main/AndroidManifest.xml").readText()
         val shortcuts = locate("app/src/main/res/xml/shortcuts.xml").readText()
-        val parser = locate("app/src/main/java/com/novacut/editor/engine/IncomingDocumentIntentParser.kt").readText()
-        val plugins = locate("app/src/main/java/com/novacut/editor/engine/PluginRegistry.kt").readText()
+        val parser = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/IncomingDocumentIntentParser.kt").readText()
+        val plugins = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/PluginRegistry.kt").readText()
 
         assertTrue(manifest.contains("\${applicationId}.androidx-startup"))
         assertTrue(manifest.contains("\${applicationId}.fileprovider"))
@@ -61,10 +61,10 @@ class PackageIdentityTest {
         }
 
         assertTrue(locate("app/src/main/res/values/strings.xml").readText().contains(
-            "<string name=\"app_name\">ClearCut</string>"
+            "<string name=\"app_name\">WizardCut</string>"
         ))
         assertTrue(locate("app/src/main/res/values-es/strings.xml").readText().contains(
-            "<string name=\"app_name\">ClearCut</string>"
+            "<string name=\"app_name\">WizardCut</string>"
         ))
     }
 

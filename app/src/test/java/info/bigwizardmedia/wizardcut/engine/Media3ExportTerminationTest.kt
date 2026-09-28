@@ -9,7 +9,7 @@ class Media3ExportTerminationTest {
 
     @Test
     fun transformerCancellationIsTheOnlyCleanupEntryPoint() {
-        val source = locate("app/src/main/java/com/novacut/editor/engine/VideoEngine.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/VideoEngine.kt").readText()
 
         assertTrue(source.contains("private fun cancelTransformerAndAwaitTermination(transformer: Transformer)"))
         assertTrue(source.contains("transformer.cancel()"))
@@ -18,7 +18,7 @@ class Media3ExportTerminationTest {
 
     @Test
     fun stalledExportDeletesOutputOnlyAfterCancellationFence() {
-        val source = locate("app/src/main/java/com/novacut/editor/engine/VideoEngine.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/VideoEngine.kt").readText()
         val timeout = source
             .substringAfter("if (stallPolls >= stallTimeoutPolls")
             .substringBefore("if (_exportState.value == ExportState.ERROR")

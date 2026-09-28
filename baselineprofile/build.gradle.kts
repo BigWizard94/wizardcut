@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.clearcut.baselineprofile"
+    namespace = "info.bigwizardmedia.wizardcut.baselineprofile"
     compileSdk = 37
     targetProjectPath = ":app"
 

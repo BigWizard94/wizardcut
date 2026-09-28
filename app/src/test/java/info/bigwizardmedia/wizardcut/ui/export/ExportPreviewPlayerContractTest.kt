@@ -9,7 +9,7 @@ class ExportPreviewPlayerContractTest {
 
     @Test
     fun previewPlayerOwnsCodecLeaseAndPlayerThroughDisposableEffect() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/export/ExportSheet.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/export/ExportSheet.kt").readText()
 
         assertTrue(source.contains("DisposableEffect(filePath, context)"))
         assertTrue(source.contains("createdPlayer.release()"))

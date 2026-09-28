@@ -10,10 +10,10 @@ class ObjectRemovalWiringTest {
     @Test
     fun selectedMaskReachesStillAndVideoEngines() {
         val delegate = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/AiToolsDelegate.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/AiToolsDelegate.kt"
         ).readText()
         val engine = locate(
-            "app/src/main/java/com/novacut/editor/engine/InpaintingEngine.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/engine/InpaintingEngine.kt"
         ).readText()
 
         assertTrue(delegate.contains("getSelectedMask"))

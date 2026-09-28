@@ -9,13 +9,13 @@ class FullscreenPreviewContractTest {
     @Test
     fun `fullscreen preview keeps one surface and exits before editor back navigation`() {
         val screen = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/EditorScreen.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorScreen.kt"
         ).readText().normalizeLineEndings()
         val preview = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/PreviewPanel.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/PreviewPanel.kt"
         ).readText().normalizeLineEndings()
         val systemUi = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/ImmersivePreviewSystemUi.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/ImmersivePreviewSystemUi.kt"
         ).readText().normalizeLineEndings()
 
         assertTrue(screen.contains("var isImmersivePreview by rememberSaveable"))

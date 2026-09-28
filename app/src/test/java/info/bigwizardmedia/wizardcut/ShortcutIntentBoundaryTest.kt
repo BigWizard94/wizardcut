@@ -9,9 +9,9 @@ class ShortcutIntentBoundaryTest {
 
     @Test
     fun exportedProjectShortcutsValidateRoomBeforeOpeningTheEditor() {
-        val mainActivity = locate("app/src/main/java/com/novacut/editor/MainActivity.kt").readText()
+        val mainActivity = locate("app/src/main/java/info/bigwizardmedia/wizardcut/MainActivity.kt").readText()
         val editorViewModel = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/EditorViewModel.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorViewModel.kt"
         ).readText()
 
         assertTrue(mainActivity.contains("private fun validateShortcutProject"))

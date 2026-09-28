@@ -1,6 +1,6 @@
-# ClearCut: Model Registry
+# WizardCut: Model Registry
 
-Authoritative list of every ML model and native AAR that ClearCut may fetch or bundle. Pairs with the [ModelDownloadManager](../app/src/main/java/com/novacut/editor/engine/ModelDownloadManager.kt) and is the single reference for F-Droid `NonFreeNet` audits, license review, reproducible build verification, and 16 KB page-size compliance tracking.
+Authoritative list of every ML model and native AAR that WizardCut may fetch or bundle. Pairs with the [ModelDownloadManager](../app/src/main/java/info/bigwizardmedia/wizardcut/engine/ModelDownloadManager.kt) and is the single reference for F-Droid `NonFreeNet` audits, license review, reproducible build verification, and 16 KB page-size compliance tracking.
 
 **Last refresh:** 2026-08-23. Runtime activation requirements are recorded in the AI tool activation gate matrix below.
 
@@ -18,7 +18,7 @@ Authoritative list of every ML model and native AAR that ClearCut may fetch or b
 
 ## 2. Native AARs (bundled or planned): 16 KB compliance gates
 
-Every native AAR shipped with ClearCut must pass the repository's 16 KB page-size checks. Verify ELF segment alignment with `python scripts/check_16kb_alignment.py app/build/outputs/apk/qa/app-arm64-v8a-qa.apk` and APK packaging with SDK Build Tools `zipalign -c -P 16 -v 4 <apk>` before each release. The local release artifact gate repeats these checks for every packaged ABI.
+Every native AAR shipped with WizardCut must pass the repository's 16 KB page-size checks. Verify ELF segment alignment with `python scripts/check_16kb_alignment.py app/build/outputs/apk/qa/app-arm64-v8a-qa.apk` and APK packaging with SDK Build Tools `zipalign -c -P 16 -v 4 <apk>` before each release. The local release artifact gate repeats these checks for every packaged ABI.
 
 | AAR | Status | Source | 16 KB aligned? | License | Notes |
 |---|---|---|---|---|---|
@@ -41,7 +41,7 @@ encode/decode ISO 21496-1 metadata for JPEG `Bitmap` objects; Android 16 adds
 `Gainmap.getGainmapDirection()` so apps can distinguish the legacy SDR-base +
 HDR-gainmap direction from the HDR-base + SDR-gainmap direction.
 
-| Variant | Android evidence | ClearCut status |
+| Variant | Android evidence | WizardCut status |
 |---|---|---|
 | Ultra HDR v1 / SDR base + HDR gain map | `Gainmap.GAINMAP_DIRECTION_SDR_TO_HDR` means applying the gainmap to an SDR base produces HDR. Older Android 14/15 gainmap images are treated as this direction when the direction API is unavailable. | `MediaImportEngine` records `SourceHdrFormat.ULTRA_HDR_GAIN_MAP`; ExportSheet shows the Ultra HDR source chip through color confidence. |
 | ISO 21496-1 v2-style HDR base + SDR gain map | Android 16 `Gainmap.GAINMAP_DIRECTION_HDR_TO_SDR` means the base image is HDR and applying the gainmap produces SDR. | R6.12a records `SourceHdrFormat.ULTRA_HDR_HDR_BASE_GAIN_MAP` during import and persists it through autosave via the existing `hdrFormats` list. |
@@ -81,7 +81,7 @@ Codified by [`GenerativeVideoPolicy.kt`](../app/src/main/java/com/novacut/editor
 
 ## 5. Anti-Feature posture (F-Droid `NonFreeNet`)
 
-ClearCut's F-Droid build (R5.6b) must declare `NonFreeNet` for any model fetched from a non-free CDN. Today, Hugging Face, GitHub release assets, MediaPipe `storage.googleapis.com`, and Sonatype are all acceptable. Vendor-locked endpoints (Qualcomm AI Hub model assets behind login, Apple model distribution) trigger `NonFreeNet` and must be opt-in or removed from the F-Droid track.
+WizardCut's F-Droid build (R5.6b) must declare `NonFreeNet` for any model fetched from a non-free CDN. Today, Hugging Face, GitHub release assets, MediaPipe `storage.googleapis.com`, and Sonatype are all acceptable. Vendor-locked endpoints (Qualcomm AI Hub model assets behind login, Apple model distribution) trigger `NonFreeNet` and must be opt-in or removed from the F-Droid track.
 
 | Source domain | F-Droid status |
 |---|---|
@@ -107,7 +107,7 @@ mode, and F-Droid posture are recorded here and in code.
 | `object_remove` | §1 `lama_dilated.onnx` | Explicit `ModelDownloadManager` download from the public Qualcomm Hugging Face revision | OK with NOTICE/license review | `checksumRequired = true`; SHA-256 pin in §1 | `MODEL_DOWNLOAD_REQUIRED` |
 | `denoise` | §1 `deep_filter_mobile_model` plus §2 `android-deepfilternet:0.0.8` | Bundled Maven AAR dependency | OK | Model-file and AAR SHA-256 pins documented in §1; build/release artifact checks cover packaged bytes | `READY` |
 | `ai_background` | §3 RVM planning row | Dependency not bundled | Review required because upstream is GPL-3.0 | Blocked until an exact model export, SHA-256, delivery mode, and redistribution posture are recorded | `DEPENDENCY_MISSING` |
-| `ai_stabilize` | Built-in ClearCut offline motion analysis; no downloaded model or native AAR | Built in | OK | Not applicable. The tool uses platform frame extraction and app code. | `READY` |
+| `ai_stabilize` | Built-in WizardCut offline motion analysis; no downloaded model or native AAR | Built in | OK | Not applicable. The tool uses platform frame extraction and app code. | `READY` |
 | `ai_style_transfer` | §3 AnimeGANv2 / Fast NST planning row | Dependency not bundled | Review required per style | Blocked until each style model has exact source bytes, SHA-256, and redistribution terms | `DEPENDENCY_MISSING` |
 | `video_upscale` | §3 Real-ESRGAN planning row | Dependency not bundled | OK once the exact ONNX/NCNN export is pinned | Blocked until the chosen model artifact has a SHA-256 pin and loader wiring | `DEPENDENCY_MISSING` |
 | `frame_interp` | §2/§3 RIFE NCNN planning row | Dependency not bundled | OK with native-build review | Blocked until self-built native libs and model files have SHA-256 pins and 16 KB evidence | `DEPENDENCY_MISSING` |

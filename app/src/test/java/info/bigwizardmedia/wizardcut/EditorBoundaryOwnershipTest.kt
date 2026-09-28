@@ -9,7 +9,7 @@ class EditorBoundaryOwnershipTest {
 
     @Test
     fun editorFacadeDoesNotOwnTimelineOrProjectStoreWrites() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorViewModel.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorViewModel.kt").readText()
 
         assertFalse(source.contains("timelineExchangeEngine.exportTo"))
         assertFalse(source.contains("projectDao.saveProjectWithMediaAssets"))
@@ -21,7 +21,7 @@ class EditorBoundaryOwnershipTest {
 
     @Test
     fun videoFacadeDelegatesCompositionAssemblyToTheDedicatedOwner() {
-        val source = locate("app/src/main/java/com/novacut/editor/engine/VideoEngine.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/VideoEngine.kt").readText()
 
         assertFalse(source.contains("private fun buildComposition("))
         assertTrue(source.contains("CompositionBuilder.build("))

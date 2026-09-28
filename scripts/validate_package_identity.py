@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate ClearCut's frozen Android package identity and migration contract."""
+"""Validate WizardCut's frozen Android package identity and migration contract."""
 from __future__ import annotations
 
 import argparse
@@ -220,8 +220,8 @@ def validate_archive_parser(root: Path, registry: dict[str, Any]) -> None:
     parser_sources = "\n".join(
         read_text(root / relative, root)
         for relative in (
-            "app/src/main/java/com/novacut/editor/engine/IncomingDocumentIntentParser.kt",
-            "app/src/main/java/com/novacut/editor/engine/PluginRegistry.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/engine/IncomingDocumentIntentParser.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/engine/PluginRegistry.kt",
         )
     ).lower()
     for extension in registry["archiveAssociations"]["extensions"]:

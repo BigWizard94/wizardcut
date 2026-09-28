@@ -162,7 +162,7 @@ class Media3TrimOptimizationPolicyTest {
 
     @Test
     fun transformerFlagsAreGatedAndCompletionStillVerifiesOutput() {
-        val source = locate("app/src/main/java/com/novacut/editor/engine/VideoEngine.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/VideoEngine.kt").readText()
         assertTrue(source.contains("trimOptimizationEnabled = trimOptimizationDecision.eligible"))
 
         val flagBlock = source

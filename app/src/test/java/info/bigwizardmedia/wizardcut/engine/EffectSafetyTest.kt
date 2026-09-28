@@ -37,7 +37,7 @@ class EffectSafetyTest {
 
     @Test
     fun `effect shader sources preserve alpha and avoid undefined edge math`() {
-        val source = locate("app/src/main/java/com/novacut/editor/engine/ShaderEffect.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/ShaderEffect.kt").readText()
         assertTrue(source.contains("fragColor = vec4(c.rgb * opacity, c.a * opacity)"))
         assertTrue(source.contains("dist > 0.00001 && dist < 0.5"))
         assertFalse(source.contains("smoothstep(uRadius + 0.4, uRadius - 0.3"))

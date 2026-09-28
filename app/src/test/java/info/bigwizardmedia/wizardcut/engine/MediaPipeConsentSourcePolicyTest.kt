@@ -15,7 +15,7 @@ class MediaPipeConsentSourcePolicyTest {
     @Test
     fun everyMediaPipeTasksConstructorIsConsentGated() {
         val root = locateRepoRoot()
-        val packageDir = File(root, "app/src/main/java/com/novacut/editor")
+        val packageDir = File(root, "app/src/main/java/info/bigwizardmedia/wizardcut")
         val ktFiles = packageDir.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .toList()

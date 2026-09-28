@@ -39,9 +39,9 @@ class AutoSaveRecoveryTest {
 
     @Test
     fun loadedAutosaves_haveNoBlockingRecoveryDialog() {
-        val viewModel = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorViewModel.kt").readText()
+        val viewModel = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorViewModel.kt").readText()
         val utilityPanels = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/EditorUtilityPanelHost.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorUtilityPanelHost.kt"
         ).readText()
 
         assertFalse(viewModel.contains("RECOVERY_DIALOG"))
@@ -51,8 +51,8 @@ class AutoSaveRecoveryTest {
 
     @Test
     fun saveIndicatorReflectsCompletedPersistenceInsteadOfAStartupTimer() {
-        val viewModel = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorViewModel.kt").readText()
-        val autoSave = locate("app/src/main/java/com/novacut/editor/engine/ProjectAutoSave.kt").readText()
+        val viewModel = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorViewModel.kt").readText()
+        val autoSave = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/ProjectAutoSave.kt").readText()
 
         assertTrue(autoSave.contains("onSaveResult(true, request)"))
         assertTrue(autoSave.contains("onSaveResult(false, request)"))

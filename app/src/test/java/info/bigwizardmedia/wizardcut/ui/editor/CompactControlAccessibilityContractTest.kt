@@ -8,7 +8,7 @@ class CompactControlAccessibilityContractTest {
 
     @Test
     fun compact_effect_remove_action_keeps_a_48dp_button_surface() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/editor/AudioMixerPanel.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/AudioMixerPanel.kt").readText()
 
         assertTrue(source.contains(".size(48.dp)"))
         assertTrue(source.contains("clickable(role = Role.Button, onClick = onRemove)"))
@@ -18,7 +18,7 @@ class CompactControlAccessibilityContractTest {
 
     @Test
     fun radial_actions_keep_their_40dp_visual_inside_a_48dp_target() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/editor/RadialActionMenu.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/RadialActionMenu.kt").readText()
 
         assertTrue(source.contains(".size(TouchTarget.minimum)"))
         assertTrue(source.contains(".size(40.dp)"))
@@ -28,7 +28,7 @@ class CompactControlAccessibilityContractTest {
 
     @Test
     fun editor_search_action_uses_the_shared_touch_target_token() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorScreen.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorScreen.kt").readText()
 
         assertTrue(source.contains("onClick = onSearch"))
         assertTrue(source.contains("modifier = Modifier.size(TouchTarget.minimum)"))
@@ -36,7 +36,7 @@ class CompactControlAccessibilityContractTest {
 
     @Test
     fun text_and_glow_swatches_are_localized_radio_choices() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/editor/TextEditorSheet.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/TextEditorSheet.kt").readText()
 
         assertTrue(source.contains("private val textColorOptions"))
         assertTrue(source.contains("private val glowColorOptions"))

@@ -27,7 +27,7 @@ class SecondaryStringsLocalizationTest {
 
     @Test
     fun targetedUiSurfacesRouteSecondaryCopyThroughResources() {
-        val batchPanel = source("app/src/main/java/com/novacut/editor/ui/export/BatchExportPanel.kt")
+        val batchPanel = source("app/src/main/java/info/bigwizardmedia/wizardcut/ui/export/BatchExportPanel.kt")
         listOf(
             "R.string.batch_export_subtitle",
             "R.plurals.batch_export_total",
@@ -49,7 +49,7 @@ class SecondaryStringsLocalizationTest {
         assertFalse(batchPanel.contains("\"\$inProgressCount exporting\""))
         assertFalse(batchPanel.contains("\"\$failedCount failed\""))
 
-        val projectList = source("app/src/main/java/com/novacut/editor/ui/projects/ProjectListViewModel.kt")
+        val projectList = source("app/src/main/java/info/bigwizardmedia/wizardcut/ui/projects/ProjectListViewModel.kt")
         listOf(
             "R.string.project_template_import_partial_warning",
             "R.string.project_document_preview_multiple_warning",
@@ -64,13 +64,13 @@ class SecondaryStringsLocalizationTest {
         assertFalse(projectList.contains("Warning: \${loaded.restoreReport.summary()}"))
         assertFalse(projectList.contains("name: String = \"Untitled\""))
 
-        val settingsViewModel = source("app/src/main/java/com/novacut/editor/ui/settings/SettingsViewModel.kt")
+        val settingsViewModel = source("app/src/main/java/info/bigwizardmedia/wizardcut/ui/settings/SettingsViewModel.kt")
         assertTrue(settingsViewModel.contains("R.string.settings_diagnostic_export_create_failed"))
         assertTrue(settingsViewModel.contains("R.string.settings_diagnostic_export_share_failed"))
         assertFalse(settingsViewModel.contains("\"Diagnostic ZIP could not be created. Try again.\""))
         assertFalse(settingsViewModel.contains("\"Diagnostic ZIP could not be shared from this device.\""))
 
-        val settingsScreen = source("app/src/main/java/com/novacut/editor/ui/settings/SettingsScreen.kt")
+        val settingsScreen = source("app/src/main/java/info/bigwizardmedia/wizardcut/ui/settings/SettingsScreen.kt")
         assertTrue(settingsScreen.contains("value = selectedEditorMode.label"))
         assertTrue(settingsScreen.contains("setEditorMode(editorModeOptions[it].value)"))
         assertFalse(settingsScreen.contains("value = settings.editorMode"))

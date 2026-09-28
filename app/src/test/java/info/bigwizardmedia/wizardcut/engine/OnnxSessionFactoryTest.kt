@@ -48,11 +48,11 @@ class OnnxSessionFactoryTest {
         val root = locateRepoRoot()
         val whisper = File(
             root,
-            "app/src/main/java/com/novacut/editor/engine/whisper/WhisperEngine.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/engine/whisper/WhisperEngine.kt",
         ).readText()
         val inpainting = File(
             root,
-            "app/src/main/java/com/novacut/editor/engine/InpaintingEngine.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/engine/InpaintingEngine.kt",
         ).readText()
 
         assertTrue(whisper.contains("OnnxSessionFactory.createSession"))

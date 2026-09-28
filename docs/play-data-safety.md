@@ -1,6 +1,6 @@
-# Google Play Data safety worksheet: ClearCut
+# Google Play Data safety worksheet: WizardCut
 
-This is the source of truth for ClearCut's Play Console **Data safety** form. It
+This is the source of truth for WizardCut's Play Console **Data safety** form. It
 is derived from the in-app privacy dashboard (`PrivacyDashboard.kt`) and the
 shipped manifests, and the release gate fails if a declared permission or a
 dashboard category is missing from this file.
@@ -18,7 +18,7 @@ See [privacy-policy.md](privacy-policy.md) for the user-facing policy.
 | Data types collected | **None** |
 | Data types shared | **None** |
 
-ClearCut is local-first: projects, media, and derived data stay in app-private
+WizardCut is local-first: projects, media, and derived data stay in app-private
 storage. There is no account, no server, no advertising SDK, and no analytics
 SDK. The optional network paths below are user-initiated and carry no personal
 data, so they do not constitute collection under Play's definition: they are
@@ -78,7 +78,7 @@ Normal (published) builds: `app/src/main/AndroidManifest.xml`:
 | `android.permission.INTERNET` | Model downloads, optional update check, consent-gated cloud tools | See the optional-network table |
 | `android.permission.ACCESS_NETWORK_STATE` | Wi-Fi-only model download preference | None |
 
-ClearCut requests no broad storage permission. Media is read through the Android
+WizardCut requests no broad storage permission. Media is read through the Android
 photo picker and Storage Access Framework, so the app sees only files the user
 picks.
 

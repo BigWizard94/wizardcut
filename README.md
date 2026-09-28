@@ -756,7 +756,7 @@ Android developer verification is not complete. Starting in September 2026, Goog
 
 ### Package identity and upgrade policy
 
-ClearCut is the public product name. The Android application ID and source namespace are intentionally frozen at `com.novacut.editor`: it is the legacy technical identity that preserves the existing install lineage, not public branding. The machine-readable contract lives in `scripts/package_identity.json` and is checked by the release gate.
+WizardCut is the public product name, maintained by Bigwizard Media as a branded fork of [ClearCut](https://github.com/sysadmindoc/clearcut) (MIT). The Android application ID and source namespace are `info.bigwizardmedia.wizardcut`: it is the technical identity that preserves this fork's install lineage, not public branding. The machine-readable contract lives in `scripts/package_identity.json` and is checked by the release gate.
 
 Keeping that ID and the pinned release certificate lets existing installs receive in-place updates and keeps app-private projects reachable. Provider authorities remain `${applicationId}.androidx-startup` and `${applicationId}.fileprovider`; `.clearcut` and `.clearcut-template` files and their document MIME associations remain stable.
 

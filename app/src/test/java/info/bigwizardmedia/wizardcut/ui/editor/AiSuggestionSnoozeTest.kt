@@ -18,7 +18,7 @@ class AiSuggestionSnoozeTest {
 
     @Test
     fun suggestionBanner_exposesAVisibleNotNowAction() {
-        val banner = locate("app/src/main/java/com/novacut/editor/ui/editor/AiSuggestionBanner.kt").readText()
+        val banner = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/AiSuggestionBanner.kt").readText()
 
         assertTrue(banner.contains("ai_suggestion_not_now"))
         assertTrue(banner.contains("onClick = onDismiss"))

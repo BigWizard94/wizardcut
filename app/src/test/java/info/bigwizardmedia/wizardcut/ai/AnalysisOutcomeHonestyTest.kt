@@ -37,7 +37,7 @@ class AnalysisOutcomeHonestyTest {
     @Test
     fun theZoomOnlyPathIsNotCalledStabilization() {
         val delegate = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/AiToolsDelegate.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/AiToolsDelegate.kt"
         ).readText()
         val strings = locate("app/src/main/res/values/strings.xml").readText()
 
@@ -56,7 +56,7 @@ class AnalysisOutcomeHonestyTest {
     @Test
     fun aFailedDisclosureSidecarIsNotSilent() {
         val delegate = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/ExportDelegate.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/ExportDelegate.kt"
         ).readText()
 
         assertTrue(

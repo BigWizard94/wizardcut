@@ -22,8 +22,8 @@ class MediaStorePendingRowSweeperTest {
 
     @Test
     fun startupWiresTheBoundedSweepThroughTheApplicationScope() {
-        val source = locate("app/src/main/java/com/novacut/editor/WizardCutApp.kt").readText()
-        val sweeper = locate("app/src/main/java/com/novacut/editor/engine/MediaStorePendingRowSweeper.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/WizardCutApp.kt").readText()
+        val sweeper = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/MediaStorePendingRowSweeper.kt").readText()
 
         assertTrue(source.contains("mediaStorePendingRowSweeper.sweep()"))
         assertTrue(source.contains("applicationScope.launch"))

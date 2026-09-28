@@ -24,9 +24,9 @@ class PublicFeatureClaimsTest {
             return
         }
 
-        val editorScreen = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorScreen.kt").readText()
-        val timeline = locate("app/src/main/java/com/novacut/editor/ui/editor/Timeline.kt").readText()
-        val editorViewModel = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorViewModel.kt").readText()
+        val editorScreen = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorScreen.kt").readText()
+        val timeline = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/Timeline.kt").readText()
+        val editorViewModel = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorViewModel.kt").readText()
 
         assertTrue(
             "README slip/slide claim requires EditorScreen to wire slide gestures",
@@ -69,12 +69,12 @@ class PublicFeatureClaimsTest {
         assertTrue(strings.getValue("tool_cloud_backup").contains("Archive"))
         assertTrue(strings.getValue("panel_cloud_backup_description").contains("Downloads/ClearCut"))
 
-        val importRouter = locate("app/src/main/java/com/novacut/editor/engine/IncomingDocumentImportRouter.kt").readText()
+        val importRouter = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/IncomingDocumentImportRouter.kt").readText()
         val legacyFeatureName = "Cloud " + "Backup"
         assertFalse(importRouter.contains(legacyFeatureName, ignoreCase = true))
         assertTrue(importRouter.contains("Archive Transfer import"))
 
-        val editorViewModel = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorViewModel.kt").readText()
+        val editorViewModel = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorViewModel.kt").readText()
         assertFalse(editorViewModel.contains("\"Archive saved:"))
         assertFalse(editorViewModel.contains("\"Archive export failed\""))
         assertTrue(editorViewModel.contains("R.string.vm_backup_saved_toast"))
@@ -110,7 +110,7 @@ class PublicFeatureClaimsTest {
             .lineSequence()
             .first { it.contains("Timeline interchange") }
         val timelineImportEngine =
-            locate("app/src/main/java/com/novacut/editor/engine/TimelineImportEngine.kt").readText()
+            locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/TimelineImportEngine.kt").readText()
 
         if (timelineImportEngine.contains("not yet implemented", ignoreCase = true)) {
             assertFalse(
@@ -131,7 +131,7 @@ class PublicFeatureClaimsTest {
     @Test
     fun timelineExchangeCapabilityDoesNotAdvertiseGatedImport() {
         val timelineImportEngine =
-            locate("app/src/main/java/com/novacut/editor/engine/TimelineImportEngine.kt").readText()
+            locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/TimelineImportEngine.kt").readText()
 
         if (timelineImportEngine.contains("not yet implemented", ignoreCase = true)) {
             assertFalse(TimelineExchangeEngine.TimelineExchangeFormat.OTIO.canImport)
@@ -149,7 +149,7 @@ class PublicFeatureClaimsTest {
         )
 
         for ((engineName, forbiddenClaims) in stubbedEngines) {
-            val engineFile = locate("app/src/main/java/com/novacut/editor/engine/$engineName.kt")
+            val engineFile = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/$engineName.kt")
             val engineSource = engineFile.readText()
             val isStub = engineSource.contains("stub", ignoreCase = true)
                     || engineSource.contains("not yet implemented", ignoreCase = true)
@@ -173,7 +173,7 @@ class PublicFeatureClaimsTest {
     @Test
     fun captionTranslationEngineReportsNotReady() {
         val engineSource = locate(
-            "app/src/main/java/com/novacut/editor/engine/CaptionTranslationEngine.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/engine/CaptionTranslationEngine.kt"
         ).readText()
 
         if (engineSource.contains("stub", ignoreCase = true)) {
@@ -189,7 +189,7 @@ class PublicFeatureClaimsTest {
         val entries = architectureTree(locate("README.md").readText())
         assertTrue("README architecture tree parsed no entries", entries.size > 20)
 
-        val sourceRoot = locate("app/src/main/java/com/novacut/editor")
+        val sourceRoot = locate("app/src/main/java/info/bigwizardmedia/wizardcut")
         entries.forEach { entry ->
             val target = if (entry.path.endsWith("/")) {
                 File(sourceRoot, entry.path.trimEnd('/'))
@@ -208,7 +208,7 @@ class PublicFeatureClaimsTest {
     @Test
     fun architectureTreeCountsMatchTheSourceTree() {
         val readme = locate("README.md").readText()
-        val engineDir = locate("app/src/main/java/com/novacut/editor/engine")
+        val engineDir = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine")
         val engineSources = engineDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         val singletonFiles = engineSources.count { it.readText().contains("@Singleton") }
 
@@ -228,7 +228,7 @@ class PublicFeatureClaimsTest {
     @Test
     fun architectureTreeEnginesAreReachableUnlessLabelledOtherwise() {
         val readme = locate("README.md").readText()
-        val sourceRoot = locate("app/src/main/java/com/novacut/editor")
+        val sourceRoot = locate("app/src/main/java/info/bigwizardmedia/wizardcut")
         val allSources = sourceRoot.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
         architectureTree(readme)

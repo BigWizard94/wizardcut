@@ -119,10 +119,10 @@ class LocaleResourceCoverageTest {
     fun criticalExportTimelineSpeedAndMaskCopyUsesResources() {
         val repoRoot = locateRepoRoot()
         val files = listOf(
-            "app/src/main/java/com/novacut/editor/ui/export/ExportSheet.kt",
-            "app/src/main/java/com/novacut/editor/ui/editor/SpeedCurveEditor.kt",
-            "app/src/main/java/com/novacut/editor/ui/editor/Timeline.kt",
-            "app/src/main/java/com/novacut/editor/ui/editor/MaskEditorPanel.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/export/ExportSheet.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/SpeedCurveEditor.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/Timeline.kt",
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/MaskEditorPanel.kt",
         )
         val forbidden = listOf(
             "Export exceeds source resolution",

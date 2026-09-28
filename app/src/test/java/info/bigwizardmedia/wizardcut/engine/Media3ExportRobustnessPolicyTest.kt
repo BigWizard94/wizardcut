@@ -53,8 +53,8 @@ class Media3ExportRobustnessPolicyTest {
 
     @Test
     fun media3HooksAreConnectedToReleaseAndProxyPaths() {
-        val videoEngine = locate("app/src/main/java/com/novacut/editor/engine/VideoEngine.kt").readText()
-        val proxyEngine = locate("app/src/main/java/com/novacut/editor/engine/ProxyEngine.kt").readText()
+        val videoEngine = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/VideoEngine.kt").readText()
+        val proxyEngine = locate("app/src/main/java/info/bigwizardmedia/wizardcut/engine/ProxyEngine.kt").readText()
 
         assertTrue(videoEngine.contains(".setEnableCodecDbLite(true)"))
         assertTrue(videoEngine.contains("speedFrameRateCap("))

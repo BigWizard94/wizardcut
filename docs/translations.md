@@ -1,6 +1,6 @@
 # Translation contribution guide
 
-ClearCut keeps the English resource file as the source of truth. Spanish is the first shipped translation. A new locale can be contributed without changing Kotlin UI code.
+WizardCut keeps the English resource file as the source of truth. Spanish is the first shipped translation. A new locale can be contributed without changing Kotlin UI code.
 
 ## Add a locale
 

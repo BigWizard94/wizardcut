@@ -22,7 +22,7 @@ class TimelineScrollPerformancePolicyTest {
 
     @Test
     fun timelineUsesLazyCacheWindowAndVisibilityGating() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/editor/Timeline.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/Timeline.kt").readText()
 
         assertTrue(source.contains("LazyLayoutCacheWindow"))
         assertTrue(source.contains("LazyRow("))
@@ -37,7 +37,7 @@ class TimelineScrollPerformancePolicyTest {
     @Test
     fun frameTimingBenchmarkStillExercisesTimelineScrubbing() {
         val source = locate(
-            "baselineprofile/src/main/java/com/novacut/baselineprofile/StartupAndEditorMacrobenchmark.kt"
+            "baselineprofile/src/main/java/info/bigwizardmedia/wizardcut/baselineprofile/StartupAndEditorMacrobenchmark.kt"
         ).readText()
 
         assertTrue(source.contains("FrameTimingMetric()"))

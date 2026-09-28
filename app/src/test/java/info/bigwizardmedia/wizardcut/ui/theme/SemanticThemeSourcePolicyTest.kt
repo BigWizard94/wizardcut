@@ -11,13 +11,13 @@ class SemanticThemeSourcePolicyTest {
     fun featureSurfacesDoNotBypassSemanticOrApprovedAccentTokens() {
         val root = locateRepoRoot()
         val sourceRoots = listOf("editor", "export", "mediapicker", "projects", "settings").map { area ->
-            File(root, "app/src/main/java/com/novacut/editor/ui/$area")
+            File(root, "app/src/main/java/info/bigwizardmedia/wizardcut/ui/$area")
         }
         val files = sourceRoots.flatMap { directory ->
             directory.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         }
         val rawColorFiles = listOf("editor", "projects", "settings").flatMap { area ->
-            File(root, "app/src/main/java/com/novacut/editor/ui/$area")
+            File(root, "app/src/main/java/info/bigwizardmedia/wizardcut/ui/$area")
                 .walkTopDown()
                 .filter { it.isFile && it.extension == "kt" }
                 .toList()
@@ -51,7 +51,7 @@ class SemanticThemeSourcePolicyTest {
     @Test
     fun roundedGeometryStaysWithinTheTwelveDpScale() {
         val root = locateRepoRoot()
-        val uiRoot = File(root, "app/src/main/java/com/novacut/editor/ui")
+        val uiRoot = File(root, "app/src/main/java/info/bigwizardmedia/wizardcut/ui")
         val violations = uiRoot.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .flatMap { file ->

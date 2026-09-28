@@ -26,7 +26,7 @@ class UiHardcodedLiteralRatchetTest {
         )
 
         budgets.forEach { (fileName, budget) ->
-            val file = File(root, "app/src/main/java/com/novacut/editor/ui/editor/$fileName")
+            val file = File(root, "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/$fileName")
             val count = UI_LITERAL_PATTERNS.sumOf { pattern -> pattern.findAll(file.readText()).count() }
             assertTrue(
                 "$fileName added reachable hard-coded UI copy: $count > $budget",
@@ -38,7 +38,7 @@ class UiHardcodedLiteralRatchetTest {
     @Test
     fun everyUiSourceFileStaysWithinTheMeasuredLiteralBudget() {
         val root = locateRepoRoot()
-        val uiRoot = File(root, "app/src/main/java/com/novacut/editor/ui")
+        val uiRoot = File(root, "app/src/main/java/info/bigwizardmedia/wizardcut/ui")
         val files = uiRoot.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .toList()

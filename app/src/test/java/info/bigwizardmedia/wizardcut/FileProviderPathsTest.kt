@@ -68,22 +68,22 @@ class FileProviderPathsTest {
         val roots = fileProviderRoots()
         val contracts = listOf(
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/ui/mediapicker/MediaPicker.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/ui/mediapicker/MediaPicker.kt",
                 marker = "pendingCameraCaptureDir(context)",
                 requiredRoots = setOf(ProviderRoot("cache-path", "camera_captures", "camera-captures/"))
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/ui/settings/SettingsScreen.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/ui/settings/SettingsScreen.kt",
                 marker = "shareDiagnosticBundle",
                 requiredRoots = setOf(ProviderRoot("files-path", "diagnostic_shares", "diagnostic-shares/"))
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/ui/editor/EditorUtilityPanelHost.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorUtilityPanelHost.kt",
                 marker = "shareMetadataSidecar",
                 requiredRoots = setOf(ProviderRoot("files-path", "diagnostic_shares", "diagnostic-shares/"))
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/ui/projects/ProjectListViewModel.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/ui/projects/ProjectListViewModel.kt",
                 marker = "\"archives/templates\"",
                 requiredRoots = setOf(
                     ProviderRoot("external-files-path", "external_archives", "archives/"),
@@ -91,7 +91,7 @@ class FileProviderPathsTest {
                 )
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/ui/editor/EditorViewModel.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorViewModel.kt",
                 marker = "\"templates\"",
                 requiredRoots = setOf(
                     ProviderRoot("external-files-path", "templates", "templates/"),
@@ -99,22 +99,22 @@ class FileProviderPathsTest {
                 )
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/engine/DirectPublishEngine.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/engine/DirectPublishEngine.kt",
                 marker = "validatePublishableFile(file)",
                 requiredRoots = shareableExportRoots()
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/engine/ExportService.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/engine/ExportService.kt",
                 marker = "latestOutputPath",
                 requiredRoots = shareableExportRoots()
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/ui/editor/ExportDelegate.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/ui/editor/ExportDelegate.kt",
                 marker = "lastExportedFilePath",
                 requiredRoots = shareableExportRoots()
             ),
             ProducerContract(
-                sourcePath = "src/main/java/com/novacut/editor/ui/editor/AiToolsDelegate.kt",
+                sourcePath = "src/main/java/info/bigwizardmedia/wizardcut/ui/editor/AiToolsDelegate.kt",
                 marker = "FileProvider.getUriForFile",
                 requiredRoots = setOf(
                     ProviderRoot("files-path", "stabilization_profiles", "stabilization_profiles/")

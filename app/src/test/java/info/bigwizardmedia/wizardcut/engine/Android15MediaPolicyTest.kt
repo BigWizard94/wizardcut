@@ -36,13 +36,13 @@ class Android15MediaPolicyTest {
     @Test
     fun `production hooks keep media3 loudness and surface headroom at their owners`() {
         val videoEngine = locate(
-            "app/src/main/java/com/novacut/editor/engine/VideoEngine.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/engine/VideoEngine.kt"
         ).readText().normalizeLineEndings()
         val previewPanel = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/PreviewPanel.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/PreviewPanel.kt"
         ).readText().normalizeLineEndings()
         val windowPolicy = locate(
-            "app/src/main/java/com/novacut/editor/ui/editor/Android15HdrHeadroomWindow.kt"
+            "app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/Android15HdrHeadroomWindow.kt"
         ).readText().normalizeLineEndings()
 
         assertTrue(videoEngine.contains("LoudnessCodecController"))

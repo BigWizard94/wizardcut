@@ -1,4 +1,4 @@
-ClearCut es un editor de vídeo completo y de código abierto para Android. Está construido con Kotlin, Jetpack Compose y Media3 Transformer para ofrecer edición profesional con controles claros sobre el almacenamiento local, las descargas opcionales y las herramientas planificadas.
+WizardCut es un editor de vídeo completo y de código abierto para Android. Está construido con Kotlin, Jetpack Compose y Media3 Transformer para ofrecer edición profesional con controles claros sobre el almacenamiento local, las descargas opcionales y las herramientas planificadas.
 
 Funciones:
 - Línea de tiempo multipista con ajuste magnético, edición slip/slide y agrupación de clips

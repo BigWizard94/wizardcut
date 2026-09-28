@@ -55,7 +55,7 @@ class PreviewSurfaceRecoveryTest {
 
     @Test
     fun playerViewRemainsMountedBehindGapStillAndErrorOverlays() {
-        val source = locate("app/src/main/java/com/novacut/editor/ui/editor/PreviewPanel.kt").readText()
+        val source = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/PreviewPanel.kt").readText()
         val playerViewIndex = source.indexOf("AndroidView(")
         val overlayStateIndex = source.indexOf("hasPlaybackError ->")
 

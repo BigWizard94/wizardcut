@@ -8,9 +8,9 @@ class TimelineToolbarContractTest {
 
     @Test
     fun `selected clips expose a destructive delete toolbar action`() {
-        val toolbar = locate("app/src/main/java/com/novacut/editor/ui/editor/TimelineToolbar.kt").readText()
-        val chrome = locate("app/src/main/java/com/novacut/editor/ui/editor/TimelineChrome.kt").readText()
-        val screen = locate("app/src/main/java/com/novacut/editor/ui/editor/EditorScreen.kt").readText()
+        val toolbar = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/TimelineToolbar.kt").readText()
+        val chrome = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/TimelineChrome.kt").readText()
+        val screen = locate("app/src/main/java/info/bigwizardmedia/wizardcut/ui/editor/EditorScreen.kt").readText()
 
         assertTrue(toolbar.contains("if (selectedClipId != null)"))
         assertTrue(toolbar.contains("icon = Icons.Default.Delete"))
