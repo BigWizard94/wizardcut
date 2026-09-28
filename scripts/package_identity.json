@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "publicProductName": "ClearCut",
   "retiredPublicProductName": "NovaCut",
-  "applicationId": "com.novacut.editor",
-  "namespace": "com.novacut.editor",
-  "sourcePackage": "com.novacut.editor",
+  "applicationId": "info.bigwizardmedia.wizardcut",
+  "namespace": "info.bigwizardmedia.wizardcut",
+  "sourcePackage": "info.bigwizardmedia.wizardcut",
   "migrationPolicy": {
     "applicationId": "retain-existing-lineage",
     "namespace": "retain-existing-lineage",
@@ -22,11 +22,11 @@
     "${applicationId}.fileprovider"
   ],
   "shortcutTarget": {
-    "package": "com.novacut.editor",
-    "class": "com.novacut.editor.MainActivity",
+    "package": "info.bigwizardmedia.wizardcut",
+    "class": "info.bigwizardmedia.wizardcut.MainActivity",
     "actions": [
-      "com.novacut.editor.action.NEW_PROJECT",
-      "com.novacut.editor.action.OPEN_RECENT"
+      "info.bigwizardmedia.wizardcut.action.NEW_PROJECT",
+      "info.bigwizardmedia.wizardcut.action.OPEN_RECENT"
     ]
   },
   "archiveAssociations": {
@@ -56,7 +56,7 @@
   ],
   "readmePolicyPhrases": [
     "### Package identity and upgrade policy",
-    "`com.novacut.editor`",
+    "`info.bigwizardmedia.wizardcut`",
     "new install with an explicit export/import path"
   ]
 }

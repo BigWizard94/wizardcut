@@ -1,22 +1,31 @@
 <p align="center">
-  <img src="icon.png" alt="ClearCut" width="128" />
+  <img src="icon.png" alt="WizardCut" width="128" />
 </p>
 
-<h1 align="center">ClearCut</h1>
+<h1 align="center">WizardCut</h1>
 
-[![Version](https://img.shields.io/badge/version-3.81.0-89dceb)](https://github.com/SysAdminDoc/ClearCut/releases)
+<p align="center"><sub><em>A branded fork of ClearCut, maintained by <strong>Bigwizard Media</strong>.</em></sub></p>
+
+[![Version](https://img.shields.io/badge/version-3.81.0-a855f7)](https://github.com/BigWizard94/wizardcut/releases)
 [![License](https://img.shields.io/badge/license-MIT-a6e3a1)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-Android-cba6f7)
+![Platform](https://img.shields.io/badge/platform-Android-54d6c6)
 
 <p align="center">
-  <a href="https://ko-fi.com/X8K126YVER">
-    <img height="42" src="https://storage.ko-fi.com/cdn/kofi2.png?v=3" alt="Buy me a coffee on Ko-fi" />
-  </a>
+  <sub><em>WizardCut is a full-featured, open-source Android video editor with on-device AI: Whisper-powered captions, background segmentation, and AI noise reduction — no cloud, no watermark, no ads.</em></sub>
 </p>
 
-<p align="center">
-  <sub><em>If ClearCut makes editing easier, a coffee helps fund the testing and maintenance behind each release.</em></sub>
-</p>
+## Upstream attribution
+
+WizardCut is a fork of [ClearCut](https://github.com/sysadmindoc/clearcut) by SysAdminDoc, used under the [MIT License](LICENSE). All upstream copyright notices, license files, and third-party notices (including the FFmpeg/FFmpegKitNext LGPL source offer in `app/src/main/res/raw/`) are kept intact in this repository.
+
+### What this fork changes
+
+- App name and launcher icon rebranded to **WizardCut** (deep-purple + teal identity)
+- Application ID: `info.bigwizardmedia.wizardcut`
+- Compose theme accents shifted to the WizardCut purple/teal palette
+- User-facing strings updated; internal code attribution to upstream preserved
+
+Feature work, changelogs, and engineering history below belong to the upstream project.
 
 ### v3.81.0 Sharper screens, fewer dead ends
 

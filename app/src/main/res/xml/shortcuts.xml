@@ -17,7 +17,7 @@
         android:shortcutShortLabel="@string/shortcut_new_project_short"
         android:shortcutLongLabel="@string/shortcut_new_project_long">
         <intent
-            android:action="com.novacut.editor.action.NEW_PROJECT"
+            android:action="info.bigwizardmedia.wizardcut.action.NEW_PROJECT"
             android:targetPackage="${applicationId}"
             android:targetClass="${applicationId}.MainActivity" />
         <!-- Not a conversation shortcut — removed android.shortcut.conversation -->
@@ -31,7 +31,7 @@
         android:shortcutShortLabel="@string/shortcut_recent_short"
         android:shortcutLongLabel="@string/shortcut_recent_long">
         <intent
-            android:action="com.novacut.editor.action.OPEN_RECENT"
+            android:action="info.bigwizardmedia.wizardcut.action.OPEN_RECENT"
             android:targetPackage="${applicationId}"
             android:targetClass="${applicationId}.MainActivity" />
     </shortcut>

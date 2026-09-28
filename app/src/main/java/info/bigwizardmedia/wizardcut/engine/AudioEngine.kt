@@ -1,0 +1,526 @@
+package info.bigwizardmedia.wizardcut.engine
+
+import android.content.Context
+import android.media.*
+import android.net.Uri
+import android.util.LruCache
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.ShortBuffer
+import javax.inject.Inject
+import javax.inject.Singleton
+import info.bigwizardmedia.wizardcut.engine.AppLog
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
+import java.security.MessageDigest
+import kotlin.math.max
+import kotlin.math.min
+
+private const val TAG = "AudioEngine"
+
+/**
+ * Audio processing engine for waveform extraction, mixing, and effects.
+ */
+@Singleton
+class AudioEngine @Inject constructor(
+    @ApplicationContext private val context: Context,
+    memoryTrimRegistry: MemoryTrimRegistry,
+) {
+    /**
+     * LRU cache for extracted waveforms keyed by "uri|sampleCount".
+     * Avoids redundant PCM decoding when timeline recomposes.
+     * Max 64 entries (~50KB total for 200-sample waveforms).
+     */
+    private val waveformCache = LruCache<String, FloatArray>(64)
+    private val diskCacheDir = File(context.filesDir, "waveform-cache")
+    private val maxDiskCacheBytes = 50L * 1024 * 1024 // 50 MB
+
+    init {
+        memoryTrimRegistry.register(
+            MemoryTrimAction.CLEAR_WAVEFORMS,
+            "audio.waveformCache",
+        ) {
+            clearWaveformCache()
+        }
+    }
+
+    fun clearWaveformCache() {
+        waveformCache.evictAll()
+    }
+
+    private fun diskCacheKeyHash(key: String): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        return md.digest(key.toByteArray()).joinToString("") { "%02x".format(it) }.take(32)
+    }
+
+    private fun readDiskCache(cacheKey: String): FloatArray? = try {
+        val file = File(diskCacheDir, diskCacheKeyHash(cacheKey))
+        if (file.exists() && file.length() >= 4) {
+            file.setLastModified(System.currentTimeMillis())
+            DataInputStream(file.inputStream().buffered()).use { dis ->
+                val count = dis.readInt()
+                if (count in 1..10_000) {
+                    FloatArray(count) { dis.readFloat() }
+                } else null
+            }
+        } else null
+    } catch (_: Exception) { null }
+
+    private fun writeDiskCache(cacheKey: String, data: FloatArray) {
+        try {
+            diskCacheDir.mkdirs()
+            val file = File(diskCacheDir, diskCacheKeyHash(cacheKey))
+            val tmp = File(diskCacheDir, "${file.name}.tmp")
+            DataOutputStream(tmp.outputStream().buffered()).use { dos ->
+                dos.writeInt(data.size)
+                data.forEach { dos.writeFloat(it) }
+            }
+            tmp.renameTo(file)
+            evictDiskCacheIfNeeded()
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Failed to write waveform disk cache", e)
+        }
+    }
+
+    private fun evictDiskCacheIfNeeded() {
+        val files = diskCacheDir.listFiles() ?: return
+        var totalSize = files.sumOf { it.length() }
+        if (totalSize <= maxDiskCacheBytes) return
+        val sorted = files.sortedBy { it.lastModified() }
+        for (file in sorted) {
+            if (totalSize <= maxDiskCacheBytes * 3 / 4) break
+            totalSize -= file.length()
+            file.delete()
+        }
+    }
+
+    /**
+     * Extract audio waveform amplitude data from a media file.
+     * Returns normalized amplitudes (0..1) at evenly spaced intervals.
+     * Results are cached to avoid redundant decoding on timeline recomposition.
+     */
+    suspend fun extractWaveform(
+        uri: Uri,
+        sampleCount: Int = 200
+    ): FloatArray = withContext(Dispatchers.IO) {
+        if (sampleCount <= 0) return@withContext FloatArray(0)
+        val boundedSampleCount = sampleCount.coerceAtMost(10_000)
+        val cacheKey = "${uri}|${boundedSampleCount}"
+        waveformCache.get(cacheKey)?.let { return@withContext it }
+        readDiskCache(cacheKey)?.let { cached ->
+            waveformCache.put(cacheKey, cached)
+            return@withContext cached
+        }
+        if (isNonAudioVisualAsset(uri)) {
+            val silent = FloatArray(boundedSampleCount) { 0f }
+            waveformCache.put(cacheKey, silent)
+            return@withContext silent
+        }
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(context, uri, null)
+
+            // Find audio track
+            var audioTrackIndex = -1
+            var format: MediaFormat? = null
+            for (i in 0 until extractor.trackCount) {
+                val trackFormat = extractor.getTrackFormat(i)
+                val mime = trackFormat.getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("audio/")) {
+                    audioTrackIndex = i
+                    format = trackFormat
+                    break
+                }
+            }
+
+            if (audioTrackIndex < 0 || format == null) {
+                // Use the same bounded size applied everywhere else in this function so
+                // callers that pass a large sampleCount (e.g. 48 000) don't receive an
+                // unexpectedly large array here when there is simply no audio track.
+                return@withContext FloatArray(boundedSampleCount) { 0f }
+            }
+
+            extractor.selectTrack(audioTrackIndex)
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext FloatArray(boundedSampleCount)
+
+            // Decode audio to PCM
+            var decoderLease: CodecLease<MediaCodec>? = null
+            val amplitudes: MutableList<Float>
+            var maxAmplitude = 1f
+            try {
+                val decoder = CodecInstanceBudget.acquireDecoder(mime)
+                    .also { decoderLease = it }
+                    .resource
+                decoder.configure(format, null, null, 0)
+                decoder.start()
+
+                amplitudes = mutableListOf()
+                val bufferInfo = MediaCodec.BufferInfo()
+                var isEOS = false
+
+                while (!isEOS) {
+                    ensureActive()
+                    // Feed input
+                    val inIndex = decoder.dequeueInputBuffer(10000)
+                    if (inIndex >= 0) {
+                        val inputBuffer = decoder.getInputBuffer(inIndex) ?: continue
+                        val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                        if (sampleSize < 0) {
+                            decoder.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            isEOS = true
+                        } else {
+                            decoder.queueInputBuffer(inIndex, 0, sampleSize, extractor.sampleTime, 0)
+                            extractor.advance()
+                        }
+                    }
+
+                    // Drain output
+                    var outIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000)
+                    while (outIndex >= 0) {
+                        val outputBuffer = decoder.getOutputBuffer(outIndex)
+                        if (outputBuffer != null && bufferInfo.size > 0) {
+                            val samples = readPcmSamples(outputBuffer, bufferInfo)
+
+                            // Calculate RMS for this buffer
+                            if (samples.isNotEmpty()) {
+                                var sum = 0.0
+                                for (sample in samples) {
+                                    sum += sample.toDouble() * sample.toDouble()
+                                }
+                                val rms = Math.sqrt(sum / samples.size).toFloat()
+                                amplitudes.add(rms)
+                                maxAmplitude = max(maxAmplitude, rms)
+                            }
+                        }
+                        decoder.releaseOutputBuffer(outIndex, false)
+                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                            isEOS = true
+                            break
+                        }
+                        outIndex = decoder.dequeueOutputBuffer(bufferInfo, 0)
+                    }
+                }
+            } finally {
+                decoderLease?.close()
+            }
+
+            // Resample to desired count and normalize
+            if (amplitudes.isEmpty()) return@withContext FloatArray(boundedSampleCount) { 0f }
+
+            val result = FloatArray(boundedSampleCount)
+            val ratio = amplitudes.size.toFloat() / boundedSampleCount
+            for (i in 0 until boundedSampleCount) {
+                val start = (i * ratio).toInt()
+                val end = min(max(((i + 1) * ratio).toInt(), start + 1), amplitudes.size)
+                var peak = 0f
+                for (j in start until end) {
+                    peak = max(peak, amplitudes[j])
+                }
+                result[i] = peak / maxAmplitude
+            }
+            waveformCache.put(cacheKey, result)
+            writeDiskCache(cacheKey, result)
+            result
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Waveform extraction failed for ${uri.redacted()}", e)
+            // Use `boundedSampleCount` -- matching the other early-return paths in this
+            // function. Callers that pass a large `sampleCount` (e.g. 48_000) must never
+            // receive an oversized array from the error path, or the 10_000-cap applied
+            // everywhere else silently turns into a multi-MB allocation on decoder failure.
+            FloatArray(boundedSampleCount) { 0f }
+        } finally {
+            extractor.release()
+        }
+    }
+
+    private fun isNonAudioVisualAsset(uri: Uri): Boolean {
+        val mimeType = context.contentResolver.getType(uri)
+        if (!mimeType.isNullOrBlank()) {
+            return mimeType.startsWith("image/")
+        }
+        val extension = uri.lastPathSegment
+            ?.substringAfterLast('.', missingDelimiterValue = "")
+            ?.lowercase()
+            ?: return false
+        return extension in setOf("jpg", "jpeg", "png", "webp", "bmp", "gif", "heic", "heif")
+    }
+
+    /**
+     * Apply volume fade to PCM data.
+     */
+    fun applyFade(
+        pcm: ShortArray,
+        sampleRate: Int,
+        channels: Int,
+        fadeInMs: Long = 0,
+        fadeOutMs: Long = 0
+    ): ShortArray {
+        val result = pcm.copyOf()
+        if (channels <= 0) return pcm
+        val totalSamples = result.size / channels
+
+        // Fade in
+        if (fadeInMs > 0) {
+            val fadeSamples = (fadeInMs / 1000.0 * sampleRate).toInt()
+            for (i in 0 until min(fadeSamples, totalSamples)) {
+                val factor = i.toFloat() / fadeSamples
+                for (ch in 0 until channels) {
+                    val idx = i * channels + ch
+                    if (idx < result.size) {
+                        result[idx] = (result[idx] * factor).toInt().toShort()
+                    }
+                }
+            }
+        }
+
+        // Fade out
+        if (fadeOutMs > 0) {
+            val fadeSamples = (fadeOutMs / 1000.0 * sampleRate).toInt()
+            val startSample = max(0, totalSamples - fadeSamples)
+            for (i in startSample until totalSamples) {
+                val factor = (totalSamples - i).toFloat() / fadeSamples
+                for (ch in 0 until channels) {
+                    val idx = i * channels + ch
+                    if (idx < result.size) {
+                        result[idx] = (result[idx] * factor).toInt().toShort()
+                    }
+                }
+            }
+        }
+
+        return result
+    }
+
+    /**
+     * Decode the first audio track of `uri` to 16-bit signed-PCM samples.
+     * Exposed for non-waveform consumers (e.g. ContentIdEngine fingerprinting)
+     * that need the raw samples but don't want to duplicate the decoder loop.
+     * Returns an empty `ShortArray` when no audio track is present or decoding
+     * fails — callers should treat that as "no data" rather than an error.
+     */
+    suspend fun decodeToPCM(uri: Uri): ShortArray = withContext(Dispatchers.IO) {
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(context, uri, null)
+            var audioIndex = -1
+            var format: MediaFormat? = null
+
+            for (i in 0 until extractor.trackCount) {
+                val tf = extractor.getTrackFormat(i)
+                if (tf.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                    audioIndex = i
+                    format = tf
+                    break
+                }
+            }
+
+            if (audioIndex < 0 || format == null) return@withContext ShortArray(0)
+
+            extractor.selectTrack(audioIndex)
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext ShortArray(0)
+            var decoderLease: CodecLease<MediaCodec>? = null
+
+            // Collect chunks as ShortArrays to avoid boxing millions of Shorts
+            val chunks = mutableListOf<ShortArray>()
+            var totalSamples = 0
+
+            try {
+                val decoder = CodecInstanceBudget.acquireDecoder(mime)
+                    .also { decoderLease = it }
+                    .resource
+                decoder.configure(format, null, null, 0)
+                decoder.start()
+
+                val bufferInfo = MediaCodec.BufferInfo()
+                var eos = false
+
+                while (!eos) {
+                    ensureActive()
+                    val inIdx = decoder.dequeueInputBuffer(10000)
+                    if (inIdx >= 0) {
+                        val buf = decoder.getInputBuffer(inIdx) ?: continue
+                        val size = extractor.readSampleData(buf, 0)
+                        if (size < 0) {
+                            decoder.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            eos = true
+                        } else {
+                            decoder.queueInputBuffer(inIdx, 0, size, extractor.sampleTime, 0)
+                            extractor.advance()
+                        }
+                    }
+
+                    var outIdx = decoder.dequeueOutputBuffer(bufferInfo, 10000)
+                    while (outIdx >= 0) {
+                        val outBuf = decoder.getOutputBuffer(outIdx)
+                        if (outBuf != null && bufferInfo.size > 0) {
+                            val arr = readPcmSamples(outBuf, bufferInfo)
+                            if (arr.isNotEmpty()) {
+                                if (AudioDecodeBudget.exceedsBudget(totalSamples, arr.size)) {
+                                    AppLog.w(TAG, "Decoded PCM exceeds the in-memory budget; stopping decode")
+                                    decoder.releaseOutputBuffer(outIdx, false)
+                                    return@withContext ShortArray(0)
+                                }
+                                chunks.add(arr)
+                                totalSamples += arr.size
+                            }
+                        }
+                        decoder.releaseOutputBuffer(outIdx, false)
+                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                            eos = true
+                            break
+                        }
+                        outIdx = decoder.dequeueOutputBuffer(bufferInfo, 0)
+                    }
+                }
+            } finally {
+                decoderLease?.close()
+            }
+
+            // Concatenate chunks into a single ShortArray without boxing
+            val result = ShortArray(totalSamples)
+            var offset = 0
+            for (chunk in chunks) {
+                System.arraycopy(chunk, 0, result, offset, chunk.size)
+                offset += chunk.size
+            }
+            result
+        } finally {
+            extractor.release()
+        }
+    }
+
+    suspend fun probeAudioFormat(uri: Uri): AudioFormatInfo? = withContext(Dispatchers.IO) {
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(context, uri, null)
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("audio/")) {
+                    val sampleRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE))
+                        format.getInteger(MediaFormat.KEY_SAMPLE_RATE) else 0
+                    val channels = if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT))
+                        format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) else 0
+                    val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION))
+                        format.getLong(MediaFormat.KEY_DURATION) else 0L
+                    if (sampleRate <= 0 || channels <= 0) return@withContext null
+                    return@withContext AudioFormatInfo(sampleRate, channels, mime, durationUs)
+                }
+            }
+            null
+        } catch (e: Exception) {
+            AppLog.w(TAG, "probeAudioFormat failed for ${uri.redacted()}", e)
+            null
+        } finally {
+            extractor.release()
+        }
+    }
+
+    fun buildConformanceReport(
+        clipFormats: Map<String, AudioFormatInfo>,
+        outputSampleRate: Int = 48000,
+        outputChannels: Int = 2
+    ): AudioConformanceReport {
+        val issues = mutableListOf<AudioConformanceIssue>()
+        val commonRates = setOf(8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000)
+
+        val rates = clipFormats.values.map { it.sampleRate }.toSet()
+        val channels = clipFormats.values.map { it.channelCount }.toSet()
+
+        if (rates.size > 1) {
+            issues.add(AudioConformanceIssue(
+                type = AudioConformanceIssueType.MIXED_SAMPLE_RATES,
+                clipId = "",
+                message = "Clips have mixed sample rates (${rates.joinToString()}). Audio will be resampled to ${outputSampleRate} Hz.",
+                isBlocking = false
+            ))
+        }
+
+        if (channels.size > 1) {
+            issues.add(AudioConformanceIssue(
+                type = AudioConformanceIssueType.MIXED_CHANNEL_COUNTS,
+                clipId = "",
+                message = "Clips have mixed channel layouts (${channels.joinToString()}). Audio will be normalized to $outputChannels channels.",
+                isBlocking = false
+            ))
+        }
+
+        for ((clipId, info) in clipFormats) {
+            if (info.sampleRate !in commonRates) {
+                issues.add(AudioConformanceIssue(
+                    type = AudioConformanceIssueType.UNCOMMON_SAMPLE_RATE,
+                    clipId = clipId,
+                    message = "Clip uses uncommon sample rate ${info.sampleRate} Hz.",
+                    isBlocking = false
+                ))
+            }
+        }
+
+        val needsResampling = rates.any { it != outputSampleRate } || channels.any { it != outputChannels }
+
+        return AudioConformanceReport(
+            clipFormats = clipFormats,
+            issues = issues,
+            targetSampleRate = outputSampleRate,
+            targetChannelCount = outputChannels,
+            needsResampling = needsResampling
+        )
+    }
+
+    private fun readPcmSamples(outputBuffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo): ShortArray {
+        if (bufferInfo.size < 2) return ShortArray(0)
+        val buffer = outputBuffer.duplicate()
+        val start = bufferInfo.offset.coerceIn(0, buffer.capacity())
+        val unalignedEnd = (bufferInfo.offset + bufferInfo.size).coerceIn(start, buffer.capacity())
+        val end = unalignedEnd - ((unalignedEnd - start) % 2)
+        if (end <= start) return ShortArray(0)
+
+        buffer.position(start)
+        buffer.limit(end)
+        val shortBuffer: ShortBuffer = buffer.slice().order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+        val samples = ShortArray(shortBuffer.remaining())
+        shortBuffer.get(samples)
+        return samples
+    }
+}
+
+data class AudioFormatInfo(
+    val sampleRate: Int,
+    val channelCount: Int,
+    val mimeType: String,
+    val durationUs: Long
+)
+
+enum class AudioConformanceIssueType {
+    MIXED_SAMPLE_RATES,
+    MIXED_CHANNEL_COUNTS,
+    MISSING_AUDIO_METADATA,
+    UNCOMMON_SAMPLE_RATE,
+}
+
+data class AudioConformanceIssue(
+    val type: AudioConformanceIssueType,
+    val clipId: String,
+    val message: String,
+    val isBlocking: Boolean
+)
+
+data class AudioConformanceReport(
+    val clipFormats: Map<String, AudioFormatInfo>,
+    val issues: List<AudioConformanceIssue>,
+    val targetSampleRate: Int,
+    val targetChannelCount: Int,
+    val needsResampling: Boolean,
+) {
+    val canExport: Boolean get() = issues.none { it.isBlocking }
+    val warningCount: Int get() = issues.count { !it.isBlocking }
+    val blockingCount: Int get() = issues.count { it.isBlocking }
+}

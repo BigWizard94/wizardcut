@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ClearCut</string>
+    <string name="app_name">WizardCut</string>
     <!-- Cut list / marker import -->
     <string name="cut_list_import_empty">Nothing to import. Paste time ranges or markers first.</string>
     <string name="cut_list_import_no_valid_rows">No valid rows. Fix %1$d line(s) first.</string>
@@ -42,7 +42,7 @@
     <string name="export_quick_presets">Quick presets</string>
     <string name="export_presets_description">Start with a platform-ready preset, then fine-tune the details if this render needs something custom.</string>
     <string name="export_more_presets">More presets</string>
-    <string name="export_preset_reframe_disclosure">This preset changes the output canvas from %1$s to %2$s. ClearCut will fit the source to that delivery frame; review the framing before export.</string>
+    <string name="export_preset_reframe_disclosure">This preset changes the output canvas from %1$s to %2$s. WizardCut will fit the source to that delivery frame; review the framing before export.</string>
     <string name="export_audio_only">Audio Only</string>
     <string name="export_audio_only_description">Skip video rendering and export a single audio master.</string>
     <string name="export_resolution">Resolution</string>
@@ -65,7 +65,7 @@
     <string name="export_smart_render_detail">%1$d%% of the timeline can stream through. %2$d ranges copy directly; %3$d need re-encode.</string>
     <string name="export_delivery_summary">Delivery summary</string>
     <string name="export_delivery_options">Delivery Options</string>
-    <string name="export_delivery_options_description">Adjust the specs ClearCut will use for this export.</string>
+    <string name="export_delivery_options_description">Adjust the specs WizardCut will use for this export.</string>
     <string name="export_target_size">Target File Size</string>
     <string name="export_target_size_description">Constrain output to fit platform upload limits. Auto-picks the bitrate.</string>
     <string name="export_estimated_size_format">Estimated file size: %1$s</string>
@@ -128,7 +128,7 @@
     <string name="export_range_end_exclusive_note">End is an exclusive frame boundary, so adjacent ranges do not duplicate a frame.</string>
     <string name="export_range_invalid">The selected export range is incomplete or outside the project timeline.</string>
     <string name="export_color_confidence_title">Color / HDR confidence</string>
-    <string name="export_color_confidence_description">ClearCut checks the chosen codec, metadata intent, and advertised device limits before export.</string>
+    <string name="export_color_confidence_description">WizardCut checks the chosen codec, metadata intent, and advertised device limits before export.</string>
 
     <!-- Compound nav breadcrumb (Tier C.13 UI) -->
     <string name="compound_breadcrumb_root">Project</string>
@@ -138,13 +138,13 @@
 
     <!-- Privacy Dashboard panel (R5.5c UI) -->
     <string name="settings_privacy_section_title">Privacy</string>
-    <string name="settings_privacy_section_description">Review what ClearCut keeps on this device and what it never sends anywhere.</string>
+    <string name="settings_privacy_section_description">Review what WizardCut keeps on this device and what it never sends anywhere.</string>
     <string name="settings_privacy_open_label">Open privacy dashboard</string>
-    <string name="settings_privacy_open_description">Tap to see every category ClearCut collects, where it lives, and how to control it.</string>
+    <string name="settings_privacy_open_description">Tap to see every category WizardCut collects, where it lives, and how to control it.</string>
     <string name="settings_privacy_open_action">Open</string>
     <string name="settings_privacy_close">Close</string>
     <string name="privacy_dashboard_title">Privacy</string>
-    <string name="privacy_dashboard_subtitle">What ClearCut collects, where it lives, and how to control it.</string>
+    <string name="privacy_dashboard_subtitle">What WizardCut collects, where it lives, and how to control it.</string>
     <string name="privacy_dashboard_section_cloud">Cloud and telemetry</string>
     <string name="privacy_dashboard_section_on_device">Stored on this device</string>
     <string name="privacy_dashboard_section_opt_in">Opt-in features (off by default)</string>
@@ -199,7 +199,7 @@
     <string name="export_ai_use_empty">No AI assistance recorded for this project.</string>
     <string name="export_ai_use_disclose_title">Disclose AI use</string>
     <string name="export_ai_use_sidecar_title">Write AI-use sidecar</string>
-    <string name="export_ai_use_sidecar_description">Creates .ai-use.json and an unsigned, unverifiable .c2pa-draft-manifest.json. ClearCut does not embed Content Credentials in this build.</string>
+    <string name="export_ai_use_sidecar_description">Creates .ai-use.json and an unsigned, unverifiable .c2pa-draft-manifest.json. WizardCut does not embed Content Credentials in this build.</string>
     <string name="export_ai_ledger_clear_button">Clear AI ledger</string>
     <string name="export_ai_ledger_clear_title">Clear AI ledger?</string>
     <string name="export_ai_ledger_clear_message">This removes the per-project AI-use record used for disclosure defaults and sidecar export.</string>
@@ -294,7 +294,7 @@
     <string name="ai_remove_segmentation_message">This removes the local background-segmentation file and disables AI matte quality until you download it again. Existing edits stay intact.</string>
     <string name="ai_whisper_removed_toast">Whisper model removed. You can download it again any time.</string>
     <string name="ai_segmentation_removed_toast">Segmentation model removed. You can download it again any time.</string>
-    <string name="ai_model_remove_failed_toast">ClearCut couldn\'t remove that model. Try again from AI Tools.</string>
+    <string name="ai_model_remove_failed_toast">WizardCut couldn\'t remove that model. Try again from AI Tools.</string>
     <string name="ai_whisper_downloading_toast">Downloading Whisper speech model…</string>
     <string name="ai_whisper_ready_toast">Whisper model ready.</string>
     <string name="ai_segmentation_downloading_toast">Downloading segmentation model…</string>
@@ -432,7 +432,7 @@
     <string name="color_lut_import_failed_toast">Failed to import LUT. Check the file and try again.</string>
     <string name="color_lut_too_large_toast">LUT is too large. The limit is 32 MB.</string>
     <string name="export_video_failed_message">Export failed. Review the timeline and try again.</string>
-    <string name="export_storage_unknown_size">ClearCut cannot safely bound storage use for this export. %1$s</string>
+    <string name="export_storage_unknown_size">WizardCut cannot safely bound storage use for this export. %1$s</string>
     <string name="export_storage_insufficient">Not enough %1$s: need %2$s, available %3$s. %4$s</string>
     <string name="export_storage_location_output">space at the export destination</string>
     <string name="export_storage_location_cache">temporary storage</string>
@@ -573,7 +573,7 @@
     <string name="ai_requirement_body_ready">The model is installed on this device. Tap to run.</string>
     <string name="ai_requirement_body_download_format">%1$s needs to download about %2$d MB. The model runs on this device. Nothing is uploaded.</string>
     <string name="ai_requirement_body_dependency">%1$s isn\'t bundled in this build yet. We\'ll add it in a future release.</string>
-    <string name="ai_requirement_body_cloud_format">%1$s sends frames to a cloud service. ClearCut never makes a network call until you confirm here.</string>
+    <string name="ai_requirement_body_cloud_format">%1$s sends frames to a cloud service. WizardCut never makes a network call until you confirm here.</string>
     <string name="ai_requirement_size_format">Download size · %1$d MB</string>
     <string name="ai_requirement_license_format">License · %1$s</string>
     <string name="ai_requirement_runtime_on_device">Runs on this device</string>
@@ -588,7 +588,7 @@
     <string name="noise_reduction_description">Analyzes audio to detect noise type (hiss, hum, broadband) and automatically applies the best DSP filters.</string>
     <string name="noise_reduction_analyzing">Analyzing noise profile\u2026</string>
     <string name="noise_reduction_analyze_button">Analyze &amp; Fix Noise</string>
-    <string name="noise_reduction_subtitle">Profile hiss, hum, and broadband noise, then let ClearCut clean the track before the final mix pass.</string>
+    <string name="noise_reduction_subtitle">Profile hiss, hum, and broadband noise, then let WizardCut clean the track before the final mix pass.</string>
     <string name="noise_reduction_profile_title">Noise profile</string>
     <string name="noise_reduction_profile_ready">Profile ready</string>
     <string name="noise_reduction_awaiting_scan">Awaiting scan</string>
@@ -601,7 +601,7 @@
     <string name="noise_reduction_type_broadband">Broadband</string>
     <string name="noise_reduction_cleanup_applied">Cleanup applied</string>
     <string name="noise_reduction_no_result_title">No analysis result yet</string>
-    <string name="noise_reduction_no_result_description">Run the pass once and ClearCut will surface the detected profile here so you can judge whether the cleanup is headed in the right direction.</string>
+    <string name="noise_reduction_no_result_description">Run the pass once and WizardCut will surface the detected profile here so you can judge whether the cleanup is headed in the right direction.</string>
 
     <!-- AudioNormPanel -->
     <string name="audio_norm_title">Audio Normalization</string>
@@ -619,7 +619,7 @@
     <string name="audio_norm_custom">Custom</string>
     <string name="audio_norm_subtitle">Match clip loudness to the delivery target before you export or stack more effects.</string>
     <string name="audio_norm_loudness_target_title">Loudness target</string>
-    <string name="audio_norm_loudness_target_description">Choose a delivery profile and ClearCut will rebalance the selected clip around that LUFS target.</string>
+    <string name="audio_norm_loudness_target_description">Choose a delivery profile and WizardCut will rebalance the selected clip around that LUFS target.</string>
     <string name="audio_norm_current_percent">%1$d%% current</string>
     <string name="audio_norm_profiles_title">Normalization profiles</string>
     <string name="audio_norm_custom_description">Dial the exact target when you are matching an existing delivery spec or audio chain.</string>
@@ -633,9 +633,9 @@
 
     <!-- SettingsScreen -->
     <string name="settings_title">Settings</string>
-    <string name="settings_subtitle">Make ClearCut work your way.</string>
+    <string name="settings_subtitle">Make WizardCut work your way.</string>
     <string name="settings_export_defaults">Export Defaults</string>
-    <string name="settings_export_defaults_description">Choose the defaults ClearCut reaches for when you start a new export.</string>
+    <string name="settings_export_defaults_description">Choose the defaults WizardCut reaches for when you start a new export.</string>
     <string name="settings_default_resolution">Default Resolution</string>
     <string name="settings_default_resolution_description">Used for fresh renders until you override it.</string>
     <string name="settings_default_frame_rate">Default Frame Rate</string>
@@ -643,7 +643,7 @@
     <string name="settings_default_aspect_ratio">Default Aspect Ratio</string>
     <string name="settings_default_aspect_ratio_description">Applied when you start a new project or template.</string>
     <string name="settings_default_codec">Default Codec</string>
-    <string name="settings_default_codec_description">Pick the delivery format ClearCut suggests first.</string>
+    <string name="settings_default_codec_description">Pick the delivery format WizardCut suggests first.</string>
     <string name="settings_project_color_policy">Project Color Policy</string>
     <string name="settings_project_color_policy_description">Current default color intent used by export confidence checks.</string>
     <string name="settings_export_notifications">Export Notifications</string>
@@ -653,7 +653,7 @@
     <string name="settings_export_notifications_off">Off</string>
     <string name="settings_export_notifications_not_required">Not required</string>
     <string name="settings_export_notifications_enabled_description">Android can show export notifications while in-app progress remains available.</string>
-    <string name="settings_export_notifications_off_description">Exports still run, but keep ClearCut open for progress and cancel controls until notifications are enabled.</string>
+    <string name="settings_export_notifications_off_description">Exports still run, but keep WizardCut open for progress and cancel controls until notifications are enabled.</string>
     <string name="settings_export_notifications_not_required_description">This Android version does not require a runtime notification grant for export notifications.</string>
     <string name="settings_export_notifications_open">Open notification settings</string>
     <string name="settings_timeline">Timeline</string>
@@ -699,7 +699,7 @@
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics_description">Create a local support bundle only when you choose to share one.</string>
     <string name="settings_appearance">Appearance</string>
-    <string name="settings_appearance_description">Choose the editor contrast policy. ClearCut currently offers dark palettes so the video canvas stays neutral and readable.</string>
+    <string name="settings_appearance_description">Choose the editor contrast policy. WizardCut currently offers dark palettes so the video canvas stays neutral and readable.</string>
     <string name="settings_appearance_mode">Appearance mode</string>
     <string name="settings_appearance_mode_description">Dark uses the standard dark canvas; High Contrast Dark boosts strokes, chips, and text indicators.</string>
     <string name="settings_appearance_dark">Dark</string>
@@ -722,14 +722,14 @@
     <string name="settings_diagnostic_export_share_failed">Diagnostic ZIP could not be shared from this device.</string>
     <string name="settings_reset_notice_message">Settings were restored to defaults after the preferences file could not be read. A redacted reset report will be included in diagnostic ZIPs.</string>
     <string name="settings_updates_section_title">Updates</string>
-    <string name="settings_updates_section_description">Sideload and GitHub-release installs only. ClearCut never downloads or installs an update for you.</string>
+    <string name="settings_updates_section_description">Sideload and GitHub-release installs only. WizardCut never downloads or installs an update for you.</string>
     <string name="settings_update_check_label">Check for updates</string>
-    <string name="settings_update_check_description">When on, ClearCut makes a single secure request to the GitHub releases page to see if a newer version exists. Off by default.</string>
+    <string name="settings_update_check_description">When on, WizardCut makes a single secure request to the GitHub releases page to see if a newer version exists. Off by default.</string>
     <string name="settings_update_check_now_label">Check now</string>
     <string name="settings_update_check_now_description">Compare the installed version with the latest GitHub release.</string>
     <string name="settings_update_check_now_action">Check</string>
     <string name="settings_update_checking_action">Checking…</string>
-    <string name="settings_update_up_to_date">ClearCut is up to date.</string>
+    <string name="settings_update_up_to_date">WizardCut is up to date.</string>
     <string name="settings_update_enable_prompt">Turn on update checks to look for new releases.</string>
     <string name="settings_update_check_failed">Couldn\'t check for updates. Try again later.</string>
     <string name="settings_update_offline">No internet connection. Reconnect to check for updates.</string>
@@ -783,7 +783,7 @@
     <string name="preview_resume_at">Content resumes at %1$s</string>
     <string name="preview_jump_to_content">Jump to Content</string>
     <string name="preview_unavailable_title">Preview unavailable</string>
-    <string name="preview_unavailable_body">ClearCut couldn\'t load this source for live preview.</string>
+    <string name="preview_unavailable_body">WizardCut couldn\'t load this source for live preview.</string>
     <string name="preview_playback_error_title">Can\'t play this clip</string>
     <string name="preview_playback_error_body">The source may have moved, become unreadable, or use a format this device can\'t decode.</string>
     <string name="preview_open_media_manager">Open Media Manager</string>
@@ -850,7 +850,7 @@
     <string name="audio_select_clip_description">Select a timeline clip to reveal waveform, fades, level control, and voiceover options here.</string>
     <string name="audio_waveform_ready">Waveform ready</string>
     <string name="audio_waveform_pending">Waveform pending</string>
-    <string name="audio_waveform_pending_description">Waveform preview will appear once ClearCut has decoded this clip’s audio.</string>
+    <string name="audio_waveform_pending_description">Waveform preview will appear once WizardCut has decoded this clip’s audio.</string>
     <string name="audio_voiceover_description">Record narration directly over the cut without leaving the audio workspace.</string>
     <string name="audio_voiceover_close_cd">Close voiceover recorder</string>
 
@@ -1027,7 +1027,7 @@
     <string name="batch_export_suffix_audio_only">Audio Only</string>
     <string name="batch_export_suffix_stems">Stems</string>
     <string name="batch_export_queue_title">Delivery Queue</string>
-    <string name="batch_export_queue_description">Build a stack of exports, move queued items to set priority, and let ClearCut run them back-to-back.</string>
+    <string name="batch_export_queue_description">Build a stack of exports, move queued items to set priority, and let WizardCut run them back-to-back.</string>
     <string name="batch_export_add_targets_description">Tap any preset to add it to the queue, then keep stacking utility exports for audio-only or stems if you need them.</string>
     <string name="batch_export_source_cuts_title">Source-file cuts</string>
     <string name="batch_export_source_cuts_description">Queue an existing timeline clip as an independent source range. Each cut exports its own file with the current delivery settings.</string>
@@ -1037,7 +1037,7 @@
     <string name="batch_export_empty_title">Nothing queued yet</string>
     <string name="batch_export_empty_description">Leave the add panel open and tap the targets you want to stack up.</string>
     <string name="batch_export_run_title">Run the Batch</string>
-    <string name="batch_export_run_description">ClearCut runs items in the saved order. Pause keeps an eligible partial video for resume; encoders that cannot pause restart from the beginning.</string>
+    <string name="batch_export_run_description">WizardCut runs items in the saved order. Pause keeps an eligible partial video for resume; encoders that cannot pause restart from the beginning.</string>
     <string name="batch_export_status_ready">Ready</string>
     <string name="batch_export_status_queued">Queued</string>
     <string name="batch_export_status_in_progress">Export in progress</string>
@@ -1115,13 +1115,13 @@
     <string name="media_picker_multi_description">Select multiple photos or videos in one pass.</string>
     <string name="media_picker_record_video">Open Camera App</string>
     <string name="media_picker_capture_title">External Camera Handoff</string>
-    <string name="media_picker_capture_description">ClearCut opens your device camera app, receives only the returned clip, and does not request camera permission for this handoff.</string>
+    <string name="media_picker_capture_description">WizardCut opens your device camera app, receives only the returned clip, and does not request camera permission for this handoff.</string>
     <string name="media_picker_source_photo_picker">System photo picker</string>
     <string name="media_picker_source_files">File picker</string>
     <string name="media_picker_source_audio">Audio files</string>
     <string name="media_picker_source_kept_local">Imports stay available offline</string>
-    <string name="media_picker_local_copy_failed">ClearCut couldn\'t keep that media available locally. Try choosing it again.</string>
-    <string name="media_picker_camera_handoff_failed">ClearCut couldn\'t open a camera app. Try importing a clip from your library instead.</string>
+    <string name="media_picker_local_copy_failed">WizardCut couldn\'t keep that media available locally. Try choosing it again.</string>
+    <string name="media_picker_camera_handoff_failed">WizardCut couldn\'t open a camera app. Try importing a clip from your library instead.</string>
     <string name="media_picker_camera_empty_capture">The camera app returned an empty clip. Try recording again or import a clip from your library.</string>
     <string name="media_picker_some_imports_failed">Some media couldn\'t be kept locally. The successful imports were added.</string>
     <string name="media_picker_importing_batch_title">Preparing media</string>
@@ -1138,7 +1138,7 @@
     <string name="audio_conformance_mixed_channels">Clips have mixed channel layouts. Audio will be normalized for export.</string>
     <string name="media_picker_audio_only">That file isn\'t audio. Pick a .mp3, .m4a, .wav, .ogg, or .flac.</string>
     <string name="media_sequence_review_title">Review starter sequence</string>
-    <string name="media_sequence_review_description">Choose the order before ClearCut adds these local files as one undoable sequence.</string>
+    <string name="media_sequence_review_description">Choose the order before WizardCut adds these local files as one undoable sequence.</string>
     <string name="media_sequence_review_reorder_hint">Drag an item to reorder it, or use the arrow buttons.</string>
     <string name="media_sequence_review_capture_time">Capture time</string>
     <string name="media_sequence_review_name">Name</string>
@@ -1153,7 +1153,7 @@
     <string name="media_sequence_review_item_detail">%1$s • captured %2$s</string>
 
     <!-- ProjectListScreen -->
-    <string name="projects_app_title">ClearCut</string>
+    <string name="projects_app_title">WizardCut</string>
     <string name="projects_count">%1$d project%2$s</string>
     <string name="projects_settings">Settings</string>
     <string name="projects_headline">Create sharper edits with less friction.</string>
@@ -1245,14 +1245,14 @@
     <string name="projects_operation_template_delete_title">Deleting template</string>
     <string name="projects_operation_template_delete_body">Removing the saved setup while keeping your projects intact.</string>
     <string name="project_duplicate_success">Project duplicated</string>
-    <string name="project_import_invalid_video">ClearCut couldn\'t import that video. Choose a readable video file and try again.</string>
-    <string name="project_import_invalid_media">ClearCut couldn\'t import that shared media. Choose readable video, image, or audio files and try again.</string>
+    <string name="project_import_invalid_video">WizardCut couldn\'t import that video. Choose a readable video file and try again.</string>
+    <string name="project_import_invalid_media">WizardCut couldn\'t import that shared media. Choose readable video, image, or audio files and try again.</string>
     <string name="project_import_partial_success">Imported %1$d of %2$d shared files.</string>
     <string name="project_imported_default_name">Imported</string>
     <string name="project_template_import_success">Imported template: %1$s</string>
     <string name="project_template_import_partial_warning">Warning: %1$s omitted from the template.</string>
     <string name="project_template_import_failed">Template import failed</string>
-    <string name="project_template_import_incompatible">Template needs a newer ClearCut version or unsupported tools.</string>
+    <string name="project_template_import_incompatible">Template needs a newer WizardCut version or unsupported tools.</string>
     <string name="project_template_import_invalid">Template file is not readable.</string>
     <string name="project_template_import_too_large">Template file is too large.</string>
     <string name="project_document_import_confirm">Import</string>
@@ -1331,7 +1331,7 @@
     <string name="editor_timeline">Timeline</string>
     <string name="editor_toggle_timeline">Toggle timeline</string>
     <string name="editor_share_video">Share video</string>
-    <string name="editor_share_location_failed">ClearCut couldn\'t create a secure share link for that file. Export again, then try sharing.</string>
+    <string name="editor_share_location_failed">WizardCut couldn\'t create a secure share link for that file. Export again, then try sharing.</string>
     <string name="editor_select_clip_effects">Select a clip to use Effects</string>
     <string name="editor_select_clip_color_grade">Select a clip to color grade</string>
     <string name="editor_select_clip_keyframes">Select a clip for keyframes</string>
@@ -1572,7 +1572,7 @@
     <string name="undo_history_stack_empty_summary">No undoable actions have been recorded in this session yet.</string>
     <string name="undo_history_stack_ready_summary">The highlighted row is the current state. Tap any earlier step to roll the timeline back in one move.</string>
     <string name="undo_history_empty_title">No edits to roll back yet</string>
-    <string name="undo_history_empty_body">As soon as you trim, move, or adjust something on the timeline, ClearCut will keep those steps here so you can restore an earlier state confidently.</string>
+    <string name="undo_history_empty_body">As soon as you trim, move, or adjust something on the timeline, WizardCut will keep those steps here so you can restore an earlier state confidently.</string>
     <string name="undo_history_live_state">Live state</string>
     <string name="undo_history_step_format">Step %1$d</string>
     <string name="undo_history_newer_count">%1$d newer</string>
@@ -1727,7 +1727,7 @@
     <string name="snapshot_status_empty">No snapshots yet</string>
     <string name="snapshot_status_ready">Restore points ready</string>
     <string name="snapshot_restore_title">Restore snapshot?</string>
-    <string name="snapshot_restore_body">Restore “%1$s”? This replaces the current timeline, overlays, markers, drawings, chapters, and playhead with this checkpoint. ClearCut saves an undo point first.</string>
+    <string name="snapshot_restore_body">Restore “%1$s”? This replaces the current timeline, overlays, markers, drawings, chapters, and playhead with this checkpoint. WizardCut saves an undo point first.</string>
     <string name="snapshot_restore_confirm">Restore snapshot</string>
     <string name="snapshot_restored_success">Restored snapshot: %1$s</string>
     <string name="snapshot_restore_failed">Snapshot could not be restored</string>
@@ -1878,7 +1878,7 @@
     <string name="beat_sync_apply">Apply Beat Sync</string>
     <string name="beat_sync_subtitle">Find the groove, mark the pulse, and snap cuts to the rhythm without scrubbing by hand.</string>
     <string name="beat_sync_rhythm_overview_title">Rhythm overview</string>
-    <string name="beat_sync_overview_ready">ClearCut has a beat map ready. You can refine the pulse manually before you commit it to the timeline.</string>
+    <string name="beat_sync_overview_ready">WizardCut has a beat map ready. You can refine the pulse manually before you commit it to the timeline.</string>
     <string name="beat_sync_overview_empty">Start with beat detection or tap along live while preview playback is running.</string>
     <string name="beat_sync_no_beat_map">No beat map</string>
     <string name="beat_sync_bpm_value">%1$d BPM</string>
@@ -1890,7 +1890,7 @@
     <string name="beat_sync_playback_hint">Start playback to tap beats live after the first analysis pass.</string>
     <string name="beat_sync_timeline_title">Beat timeline</string>
     <string name="beat_sync_timeline_ready">Review the detected pulse before applying it to your edit decisions.</string>
-    <string name="beat_sync_timeline_empty">Detected markers will appear here as soon as ClearCut maps the rhythm.</string>
+    <string name="beat_sync_timeline_empty">Detected markers will appear here as soon as WizardCut maps the rhythm.</string>
     <string name="beat_sync_no_markers">No markers yet</string>
     <string name="beat_sync_bpm_placeholder">Not available</string>
     <string name="beat_sync_apply_title">Apply beat sync</string>
@@ -1909,7 +1909,7 @@
     <string name="render_preview_play_cd">Play rendered preview</string>
     <string name="render_preview_subtitle">See which sections can stream through untouched and which shots still need a full render pass.</string>
     <string name="render_preview_outlook_empty_title">Nothing to analyze yet</string>
-    <string name="render_preview_outlook_empty_body">Add clips to the timeline and ClearCut will map which ranges can copy straight through and which still need rendering.</string>
+    <string name="render_preview_outlook_empty_body">Add clips to the timeline and WizardCut will map which ranges can copy straight through and which still need rendering.</string>
     <string name="render_preview_outlook_instant_title">Fast path available</string>
     <string name="render_preview_outlook_instant_body">Every analyzed segment can stream through untouched, so this export should finish closer to a file copy than a full render.</string>
     <string name="render_preview_outlook_mixed_title">Mixed smart render path</string>
@@ -1918,9 +1918,9 @@
     <string name="render_preview_outlook_full_body">Every analyzed segment needs processing, so expect this export to behave like a traditional full render.</string>
     <string name="render_speedup_instant">Instant</string>
     <string name="render_speedup_value">%1$.1fx</string>
-    <string name="render_preview_segments_description">Each block shows whether ClearCut can copy that range directly or has to render it again.</string>
+    <string name="render_preview_segments_description">Each block shows whether WizardCut can copy that range directly or has to render it again.</string>
     <string name="render_preview_empty_title">No segments yet</string>
-    <string name="render_preview_empty_body">Once clips are on the timeline, ClearCut will break the sequence into stream-copy and re-encode ranges here.</string>
+    <string name="render_preview_empty_body">Once clips are on the timeline, WizardCut will break the sequence into stream-copy and re-encode ranges here.</string>
     <string name="render_preview_actions_title">Render choices</string>
     <string name="render_preview_actions_body">Generate a lightweight check render first, or jump straight into the full export flow with the current settings.</string>
     <string name="render_actions_disabled_hint">Add at least one clip to unlock preview and export actions.</string>
@@ -1965,7 +1965,7 @@
         <item quantity="many">%1$d empty</item>
     </plurals>
     <string name="media_manager_scanning_title">Reviewing linked media</string>
-    <string name="media_manager_scanning_body">ClearCut is checking every source on the timeline so missing footage and cleanup opportunities are surfaced before export.</string>
+    <string name="media_manager_scanning_body">WizardCut is checking every source on the timeline so missing footage and cleanup opportunities are surfaced before export.</string>
     <string name="media_manager_scan_cancel">Cancel scan</string>
     <string name="media_manager_scan_retry">Retry scan</string>
     <string name="media_manager_scan_failed_title">Media scan failed</string>
@@ -2040,7 +2040,7 @@
     <string name="media_manager_empty_body">Imported clips, photos, and audio will appear here as soon as something lands on the timeline.</string>
     <string name="media_manager_cleanup_title">Timeline cleanup</string>
     <string name="media_manager_cleanup_ready">No empty non-default tracks are hanging around right now.</string>
-    <string name="media_manager_cleanup_needs_trim">ClearCut found empty non-default tracks that can be removed to tighten the edit stack.</string>
+    <string name="media_manager_cleanup_needs_trim">WizardCut found empty non-default tracks that can be removed to tighten the edit stack.</string>
     <plurals name="media_manager_empty_tracks_count">
         <item quantity="one">%1$d empty track</item>
         <item quantity="other">%1$d empty tracks</item>
@@ -2102,7 +2102,7 @@
     <string name="smart_reframe_close_cd">Close smart reframe</string>
     <string name="smart_reframe_subtitle">Retarget the frame for different platforms while keeping the shot focused on the subject.</string>
     <string name="smart_reframe_current_frame_title">Current delivery frame</string>
-    <string name="smart_reframe_current_frame_description">Choose a destination ratio and ClearCut will rebuild the crop for that surface.</string>
+    <string name="smart_reframe_current_frame_description">Choose a destination ratio and WizardCut will rebuild the crop for that surface.</string>
     <string name="smart_reframe_processing">Reframing</string>
     <string name="smart_reframe_targets_count">%1$d targets</string>
     <string name="smart_reframe_destination_title">Destination ratios</string>
@@ -2222,7 +2222,7 @@
 
     <!-- CloudBackupPanel -->
     <string name="panel_cloud_backup_title">Archive Transfer</string>
-    <string name="panel_cloud_backup_description">Export a portable project archive to Downloads/ClearCut/. Import it later to restore this edit on a device you control.</string>
+    <string name="panel_cloud_backup_description">Export a portable project archive to Downloads/WizardCut/. Import it later to restore this edit on a device you control.</string>
     <string name="panel_cloud_backup_estimated_size">Estimated Size</string>
     <string name="panel_cloud_backup_last_backup">Last Archive</string>
     <string name="panel_cloud_backup_never">Never</string>
@@ -2236,13 +2236,13 @@
     <string name="panel_cloud_backup_status_empty_title">No archive saved yet</string>
     <string name="panel_cloud_backup_status_empty_body">Create a project archive before risky changes so you have a clean rollback point that travels with the edit.</string>
     <string name="panel_cloud_backup_status_exporting_title">Preparing project archive</string>
-    <string name="panel_cloud_backup_status_exporting_body">ClearCut is packaging the timeline, linked media references, and current project state into a portable archive.</string>
+    <string name="panel_cloud_backup_status_exporting_body">WizardCut is packaging the timeline, linked media references, and current project state into a portable archive.</string>
     <string name="panel_cloud_backup_status_importing_title">Restoring project archive</string>
-    <string name="panel_cloud_backup_status_importing_body">ClearCut is unpacking the archive, reconnecting bundled media, and rebuilding the timeline state.</string>
+    <string name="panel_cloud_backup_status_importing_body">WizardCut is unpacking the archive, reconnecting bundled media, and rebuilding the timeline state.</string>
     <string name="panel_cloud_backup_status_ready_title">Portable archive ready</string>
     <string name="panel_cloud_backup_status_ready_body">Keep a recent archive on hand before major revisions, device transfers, or client review notes.</string>
     <string name="panel_cloud_backup_archive_title">Portable project archive</string>
-    <string name="panel_cloud_backup_archive_body">Exports land in Downloads/ClearCut so they are easy to share, move to another device, or keep as rollback points before major edits.</string>
+    <string name="panel_cloud_backup_archive_body">Exports land in Downloads/WizardCut so they are easy to share, move to another device, or keep as rollback points before major edits.</string>
     <string name="panel_cloud_backup_archive_include_title">What gets packed</string>
     <string name="panel_cloud_backup_archive_include_body">Each archive keeps the edit, managed media, LUTs, custom fonts, and watermark assets portable without baking in a render. Missing external references remain visible for relinking.</string>
     <string name="panel_cloud_backup_include_timeline">Timeline structure</string>
@@ -2252,7 +2252,7 @@
     <string name="panel_cloud_backup_actions_body">Create a fresh archive before risky changes, or import one to restore the whole project on this device.</string>
     <string name="panel_cloud_backup_actions_busy">Archive actions unlock again as soon as the current operation finishes.</string>
     <string name="panel_cloud_backup_import_confirm_title">Replace current timeline?</string>
-    <string name="panel_cloud_backup_import_confirm_body">This imports the selected archive into the open project and replaces the current timeline, overlays, markers, drawings, beats, and transcript. ClearCut saves an undo point before restoring.</string>
+    <string name="panel_cloud_backup_import_confirm_body">This imports the selected archive into the open project and replaces the current timeline, overlays, markers, drawings, beats, and transcript. WizardCut saves an undo point before restoring.</string>
     <string name="panel_cloud_backup_import_confirm_action">Replace Timeline</string>
 
     <!-- PipPresetsPanel (ChromaKey section) -->
@@ -2395,9 +2395,9 @@
     <string name="video_scopes_status_analyzing">Analyzing</string>
     <string name="video_scopes_status_ready">Live</string>
     <string name="video_scopes_waiting_title">No frame available yet</string>
-    <string name="video_scopes_waiting_body">Pause on a visible frame or scrub the timeline so ClearCut can analyze the current image.</string>
+    <string name="video_scopes_waiting_body">Pause on a visible frame or scrub the timeline so WizardCut can analyze the current image.</string>
     <string name="video_scopes_loading_title">Analyzing frame</string>
-    <string name="video_scopes_loading_body">ClearCut is sampling the current image for the selected scope.</string>
+    <string name="video_scopes_loading_body">WizardCut is sampling the current image for the selected scope.</string>
     <plurals name="blend_mode_modes_count">
         <item quantity="one">%1$d mode</item>
         <item quantity="other">%1$d modes</item>
@@ -2559,11 +2559,11 @@
     <string name="cd_preview_image_overlay_missing">Image overlay source missing</string>
     <string name="projects_empty_title">No projects yet</string>
     <string name="projects_empty_subtitle">Tap the + button to create your first video project.</string>
-    <string name="project_create_failed">ClearCut couldn\'t create that project right now. Check available storage and try again.</string>
-    <string name="project_duplicate_failed">ClearCut couldn\'t duplicate that project right now.</string>
+    <string name="project_create_failed">WizardCut couldn\'t create that project right now. Check available storage and try again.</string>
+    <string name="project_duplicate_failed">WizardCut couldn\'t duplicate that project right now.</string>
     <string name="project_delete_success">Deleted project: %1$s</string>
-    <string name="project_delete_failed">ClearCut couldn\'t delete that project right now.</string>
-    <string name="project_import_copy_failed">ClearCut couldn\'t copy that media into local storage.</string>
+    <string name="project_delete_failed">WizardCut couldn\'t delete that project right now.</string>
+    <string name="project_import_copy_failed">WizardCut couldn\'t copy that media into local storage.</string>
     <string name="cd_smart_reframe">Smart reframe</string>
     <string name="cd_clip_thumbnail">Clip thumbnail</string>
     <string name="cd_clip_source_missing">Clip source missing</string>
@@ -2582,7 +2582,7 @@
     <string name="settings_default_track_height">Default Track Height</string>
     <string name="settings_default_track_height_description">Choose how roomy new tracks should feel.</string>
     <string name="settings_default_mode">Default Mode</string>
-    <string name="settings_default_mode_description">Pick the editing depth ClearCut opens with.</string>
+    <string name="settings_default_mode_description">Pick the editing depth WizardCut opens with.</string>
     <string name="settings_mode_easy">Easy</string>
     <string name="settings_mode_pro">Pro</string>
     <string name="settings_haptic_feedback">Haptic Feedback</string>
@@ -2683,7 +2683,7 @@
     <string name="media_status_missing">Missing</string>
     <string name="media_status_unverified">Unverified</string>
     <string name="media_source_unavailable">This source file is missing on this device. Relink it before export so previews and renders do not fall back to missing media.</string>
-    <string name="media_source_unverified">ClearCut could not verify this source URI. Relink it before export so previews and renders use a confirmed file.</string>
+    <string name="media_source_unverified">WizardCut could not verify this source URI. Relink it before export so previews and renders use a confirmed file.</string>
     <string name="cd_media_goto">Go to clip</string>
     <string name="cd_media_missing">Missing</string>
 
@@ -2742,9 +2742,9 @@
     </plurals>
     <string name="recovery_media_proxy_title">Preview proxy fallback</string>
     <plurals name="recovery_media_proxy_body">
-        <item quantity="one">%1$d preview proxy is missing or empty. ClearCut will use source media while the proxy is rebuilt.</item>
-        <item quantity="other">%1$d preview proxies are missing or empty. ClearCut will use source media while proxies are rebuilt.</item>
-        <item quantity="many">%1$d preview proxies are missing or empty. ClearCut will use source media while proxies are rebuilt.</item>
+        <item quantity="one">%1$d preview proxy is missing or empty. WizardCut will use source media while the proxy is rebuilt.</item>
+        <item quantity="other">%1$d preview proxies are missing or empty. WizardCut will use source media while proxies are rebuilt.</item>
+        <item quantity="many">%1$d preview proxies are missing or empty. WizardCut will use source media while proxies are rebuilt.</item>
     </plurals>
     <string name="recovery_media_warning_title">Media warnings found</string>
     <plurals name="recovery_media_warning_body">
@@ -2781,22 +2781,22 @@
     <string name="notif_export_failed_default">Export failed</string>
     <string name="export_media_processing_timeout_error">Export stopped because Android reached its media-processing background time limit. Start the export again when the device allows more processing time.</string>
     <string name="export_notification_permission_title">Keep export progress visible</string>
-    <string name="export_notification_permission_message">ClearCut uses export notifications for background progress, completion, errors, thermal warnings, and cancel controls. If you skip this, keep the editor open to monitor and cancel the export in app.</string>
+    <string name="export_notification_permission_message">WizardCut uses export notifications for background progress, completion, errors, thermal warnings, and cancel controls. If you skip this, keep the editor open to monitor and cancel the export in app.</string>
     <string name="export_notification_permission_allow">Allow notifications</string>
     <string name="export_notification_permission_not_now">Not now</string>
-    <string name="export_notification_permission_fallback">Export notifications are off. Keep ClearCut open for progress and cancel controls.</string>
+    <string name="export_notification_permission_fallback">Export notifications are off. Keep WizardCut open for progress and cancel controls.</string>
     <string name="notif_export_thermal_progress_light">warming, export continuing</string>
     <string name="notif_export_thermal_progress_heavy">hot, export continuing</string>
     <string name="notif_export_thermal_progress_cooling">cooling advised, export continuing</string>
     <string name="notif_export_thermal_progress_stop">stopping</string>
     <string name="notif_export_thermal_light_title">Device warming. Export continuing</string>
-    <string name="notif_export_thermal_light_text">Device temperature is rising. Export is continuing unchanged, and ClearCut will keep monitoring it.</string>
+    <string name="notif_export_thermal_light_text">Device temperature is rising. Export is continuing unchanged, and WizardCut will keep monitoring it.</string>
     <string name="notif_export_thermal_heavy_title">Device hot. Export continuing</string>
     <string name="notif_export_thermal_heavy_text">Device temperature is high. This encoder cannot reduce its workload safely, so export is continuing unchanged. Let the device cool.</string>
     <string name="notif_export_thermal_cooling_title">Cooling advised. Export continuing</string>
-    <string name="notif_export_thermal_cooling_text">Android reports critical thermal pressure. This encoder cannot pause safely, so export is continuing. ClearCut will cancel only if Android reports shutdown risk.</string>
+    <string name="notif_export_thermal_cooling_text">Android reports critical thermal pressure. This encoder cannot pause safely, so export is continuing. WizardCut will cancel only if Android reports shutdown risk.</string>
     <string name="notif_export_thermal_stop_title">Export stopped for device safety</string>
-    <string name="notif_export_thermal_stop_text">Android reported shutdown-level thermal pressure, so ClearCut cancelled the export.</string>
+    <string name="notif_export_thermal_stop_text">Android reported shutdown-level thermal pressure, so WizardCut cancelled the export.</string>
 
     <!-- SmartReframePanel -->
     <string name="cd_smart_reframe_close">Close smart reframe</string>
@@ -3066,7 +3066,7 @@
     <string name="cd_camera">Record video</string>
 
     <!-- ProjectListScreen -->
-    <string name="cd_app_logo">ClearCut</string>
+    <string name="cd_app_logo">WizardCut</string>
     <string name="cd_video_library">Video library</string>
     <string name="cd_movie_placeholder">Project thumbnail</string>
     <string name="cd_duplicate_project">Duplicate project</string>
@@ -3122,7 +3122,7 @@
     <string name="v369_check_last_export">Check last export</string>
     <string name="v369_direct_publish_title">Platform Handoff</string>
     <string name="v369_direct_publish_subtitle">Open the last export in another app with suggested post text.</string>
-    <string name="v369_direct_publish_handoff_hint">ClearCut shares the file and suggested text. Posting, visibility, scheduling, and platform AI-disclosure controls stay in the selected app.</string>
+    <string name="v369_direct_publish_handoff_hint">WizardCut shares the file and suggested text. Posting, visibility, scheduling, and platform AI-disclosure controls stay in the selected app.</string>
     <string name="v369_publish_title_label">Title</string>
     <string name="v369_open_target_format">Open %1$s</string>
     <string name="v369_flash_safety_title">Flash Safety (WCAG)</string>
@@ -3556,7 +3556,7 @@
     <string name="partial_restore_keep">Keep as recovered</string>
     <string name="partial_restore_use_backup">Try previous autosave</string>
     <string name="vm_recovery_partial_toast">Some project data could not be restored (%1$s). Saving is paused so the loss is not written back. Choose what to do.</string>
-    <string name="vm_recovery_future_schema_toast">Autosave was made by a newer ClearCut version. It was left untouched to avoid losing edits.</string>
+    <string name="vm_recovery_future_schema_toast">Autosave was made by a newer WizardCut version. It was left untouched to avoid losing edits.</string>
     <string name="vm_recovery_corrupt_toast">Autosave could not be read. The file was left untouched so you can retry recovery later.</string>
     <string name="vm_recovery_not_found_toast">No autosaved recovery data was found. Opening the saved project instead.</string>
     <string name="vm_partial_restore_keep_toast">Keeping the recovered project. Saving resumed; %1$s stayed lost.</string>
@@ -3598,7 +3598,7 @@
     <string name="export_failure_stalled">The export stopped making progress and was cancelled.</string>
     <string name="export_failure_stalled_fix">Close other apps and retry. Long 4K timelines can exhaust the encoder on a warm device.</string>
     <string name="export_failure_service_timeout">Android stopped the export because it ran too long in the background.</string>
-    <string name="export_failure_service_timeout_fix">Keep ClearCut in the foreground while exporting, or export a shorter range.</string>
+    <string name="export_failure_service_timeout_fix">Keep WizardCut in the foreground while exporting, or export a shorter range.</string>
     <string name="export_failure_storage">The export could not be written to storage.</string>
     <string name="export_failure_storage_fix">Free up space or choose a different output folder, then try again.</string>
     <string name="export_failure_audio_encode">The audio track could not be encoded.</string>
@@ -3614,7 +3614,7 @@
     <string name="export_failure_unknown_fix">Try again, then use Copy report in the export error card if it repeats.</string>
     <string name="vm_snapshot_deleted_toast">Snapshot “%1$s” deleted. Restore is available now.</string>
     <string name="vm_snapshot_restored_toast">Snapshot “%1$s” restored.</string>
-    <string name="vm_snapshot_future_schema_toast">Snapshot was created by a newer ClearCut version and was not applied.</string>
+    <string name="vm_snapshot_future_schema_toast">Snapshot was created by a newer WizardCut version and was not applied.</string>
     <string name="vm_ai_ledger_cleared_toast">AI usage ledger cleared. Undo to bring it back.</string>
     <string name="project_template_restore_success">Restored “%1$s”.</string>
     <string name="project_template_restore_success_generic">Template restored.</string>
@@ -3635,5 +3635,5 @@
     <string name="ai_requirement_unmet_dependency">%1$s is not included in this build, so this tool cannot run here.</string>
     <string name="ai_requirement_unmet_generic">%1$s is not ready yet, so this tool cannot run.</string>
     <string name="ai_requirement_unknown_tool_title">This tool needs something that is not listed</string>
-    <string name="ai_requirement_unknown_tool_body">ClearCut has no requirement entry for this tool, so it cannot say what is missing. Open AI Tools to see which models are installed.</string>
+    <string name="ai_requirement_unknown_tool_body">WizardCut has no requirement entry for this tool, so it cannot say what is missing. Open AI Tools to see which models are installed.</string>
 </resources>

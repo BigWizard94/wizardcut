@@ -1,0 +1,321 @@
+package info.bigwizardmedia.wizardcut.ui.editor
+
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutAccents
+import info.bigwizardmedia.wizardcut.ui.theme.LocalClearCutColors
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import info.bigwizardmedia.wizardcut.R
+import info.bigwizardmedia.wizardcut.ui.ClearCutTestTags
+import info.bigwizardmedia.wizardcut.ui.theme.Motion
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutPrimaryButton
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutSecondaryButton
+import info.bigwizardmedia.wizardcut.ui.theme.Radius
+import info.bigwizardmedia.wizardcut.ui.theme.Spacing
+import info.bigwizardmedia.wizardcut.ui.theme.TouchTarget
+
+private data class TutorialStepDef(
+    val titleRes: Int,
+    val descriptionRes: Int,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val arrowIcon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+private val tutorialStepDefs = listOf(
+    TutorialStepDef(
+        titleRes = R.string.tutorial_title_add_media,
+        descriptionRes = R.string.tutorial_desc_add_media,
+        icon = Icons.Default.Add,
+        arrowIcon = Icons.Default.KeyboardArrowUp
+    ),
+    TutorialStepDef(
+        titleRes = R.string.tutorial_title_timeline,
+        descriptionRes = R.string.tutorial_desc_timeline,
+        icon = Icons.Default.ViewTimeline,
+        arrowIcon = Icons.Default.KeyboardArrowDown
+    ),
+    TutorialStepDef(
+        titleRes = R.string.tutorial_title_edit,
+        descriptionRes = R.string.tutorial_desc_edit,
+        icon = Icons.Default.AutoFixHigh,
+        arrowIcon = Icons.Default.KeyboardArrowDown
+    ),
+    TutorialStepDef(
+        titleRes = R.string.tutorial_title_export,
+        descriptionRes = R.string.tutorial_desc_export,
+        icon = Icons.Default.Upload,
+        arrowIcon = Icons.Default.KeyboardArrowUp
+    )
+)
+
+@Composable
+fun FirstRunTutorial(
+    onComplete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val semanticColors = LocalClearCutColors.current
+    var currentStep by remember { mutableIntStateOf(0) }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag(ClearCutTestTags.TUTORIAL_SCREEN)
+    ) {
+        // Scrim as a SIBLING behind the interactive content, not a pointer
+        // handler on the shared parent (issue #49: Next/Skip reported dead on
+        // One UI 8.5). With the consume-all loop on the root Box, the overlay
+        // itself competed with its own buttons in pointer dispatch; as a
+        // back-most sibling it only ever sees touches that miss the buttons,
+        // while still blocking the editor underneath.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent().changes.forEach { it.consume() }
+                        }
+                    }
+                }
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to semanticColors.onAccent.copy(alpha = 0.96f),
+                            0.48f to semanticColors.background.copy(alpha = 0.96f),
+                            1f to semanticColors.onAccent.copy(alpha = 0.94f)
+                        )
+                    )
+                )
+        )
+        // Skip — quiet pill button. Bare text on a translucent backdrop is hard to discover
+        // and easy to misclick; a subtle pill treatment gives it a clear affordance without
+        // competing with the primary "Next" CTA.
+        Surface(
+            color = semanticColors.surfaceLow.copy(alpha = 0.6f),
+            shape = RoundedCornerShape(Radius.sm),
+            border = BorderStroke(1.dp, semanticColors.cardStroke.copy(alpha = 0.6f)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(Spacing.lg)
+                .testTag(ClearCutTestTags.TUTORIAL_SKIP)
+                .defaultMinSize(minHeight = TouchTarget.minimum)
+                .clickable(role = Role.Button, onClick = onComplete)
+        ) {
+            Text(
+                text = stringResource(R.string.tutorial_skip),
+                color = semanticColors.subtextStrong,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+            )
+        }
+
+        // Center card with animated content
+        AnimatedContent(
+            targetState = currentStep,
+            transitionSpec = {
+                (fadeIn(tween(Motion.DurationMedium, easing = Motion.DecelerateEasing)) +
+                    slideInHorizontally(tween(Motion.DurationMedium, easing = Motion.DecelerateEasing)) { it / 4 })
+                    .togetherWith(
+                        fadeOut(tween(Motion.DurationFast, easing = Motion.AccelerateEasing)) +
+                            slideOutHorizontally(tween(Motion.DurationFast, easing = Motion.AccelerateEasing)) { -it / 4 }
+                    )
+            },
+            modifier = Modifier.align(Alignment.Center),
+            label = "tutorial_step"
+        ) { step ->
+            val tutorialStep = tutorialStepDefs[step]
+
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = Spacing.xxl)
+                    .widthIn(max = 340.dp),
+                color = semanticColors.panelHighest,
+                shape = RoundedCornerShape(Radius.xxl),
+                border = BorderStroke(1.dp, semanticColors.cardStrokeStrong.copy(alpha = 0.85f)),
+                shadowElevation = 12.dp
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0f to ClearCutAccents.Mauve.copy(alpha = 0.08f),
+                                    0.6f to semanticColors.panelHighest,
+                                    1f to semanticColors.panelHighest
+                                )
+                            )
+                        )
+                        .padding(horizontal = Spacing.xxl, vertical = Spacing.xxl)
+                ) {
+                    val isFirstStep = step == 0
+                    val isLastStep = step == tutorialStepDefs.size - 1
+                    val stepCounter = stringResource(
+                        R.string.tutorial_step_counter,
+                        step + 1,
+                        tutorialStepDefs.size
+                    )
+
+                    // Direction arrow — kept but smaller and quieter so it's a hint, not a focal point.
+                    Icon(
+                        imageVector = tutorialStep.arrowIcon,
+                        contentDescription = null,
+                        tint = ClearCutAccents.Mauve.copy(alpha = 0.85f),
+                        modifier = Modifier.size(24.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.md))
+
+                    // Step icon — added a subtle ring border for depth and an inner glow ring.
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(ClearCutAccents.Mauve.copy(alpha = 0.14f))
+                            .border(
+                                BorderStroke(1.dp, ClearCutAccents.Mauve.copy(alpha = 0.24f)),
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = tutorialStep.icon,
+                            contentDescription = null,
+                            tint = ClearCutAccents.Mauve,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.lg))
+
+                    Text(
+                        text = stringResource(tutorialStep.titleRes),
+                        color = semanticColors.text,
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.sm))
+
+                    Text(
+                        text = stringResource(tutorialStep.descriptionRes),
+                        color = semanticColors.subtextStrong,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.md))
+
+                    Surface(
+                        color = semanticColors.surfaceLow.copy(alpha = 0.72f),
+                        shape = RoundedCornerShape(Radius.sm),
+                        border = BorderStroke(1.dp, semanticColors.cardStroke.copy(alpha = 0.75f))
+                    ) {
+                        Text(
+                            text = stepCounter,
+                            color = semanticColors.subtextStrong,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.xl))
+
+                    // Step indicator — connected pill segments. The current step is wider and
+                    // accented, which reads as "you are here" much faster than equal-sized dots.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.semantics {
+                            contentDescription = stepCounter
+                            progressBarRangeInfo = ProgressBarRangeInfo(
+                                current = (step + 1).toFloat(),
+                                range = 1f..tutorialStepDefs.size.toFloat(),
+                                steps = tutorialStepDefs.size - 2
+                            )
+                        }
+                    ) {
+                        repeat(tutorialStepDefs.size) { index ->
+                            val width by animateDpAsState(
+                                targetValue = if (index == step) 24.dp else 8.dp,
+                                animationSpec = tween(Motion.DurationStandard, easing = Motion.StandardEasing),
+                                label = "tutorial_dot_width_$index"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(width)
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(Radius.sm))
+                                    .background(
+                                        if (index == step) ClearCutAccents.Mauve
+                                        else semanticColors.surface.copy(alpha = 0.7f)
+                                    )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.xl))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!isFirstStep) {
+                            ClearCutSecondaryButton(
+                                text = stringResource(R.string.tutorial_back),
+                                onClick = { currentStep-- },
+                                modifier = Modifier
+                                    .weight(0.42f)
+                                    .height(TouchTarget.minimum),
+                                icon = Icons.AutoMirrored.Filled.ArrowBack
+                            )
+                        }
+
+                        ClearCutPrimaryButton(
+                            text = stringResource(if (isLastStep) R.string.tutorial_get_started else R.string.tutorial_next),
+                            onClick = {
+                                if (isLastStep) {
+                                    onComplete()
+                                } else {
+                                    currentStep++
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(if (isFirstStep) 1f else 0.58f)
+                                .height(TouchTarget.minimum),
+                            icon = if (isLastStep) Icons.Default.Check else Icons.AutoMirrored.Filled.ArrowForward
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

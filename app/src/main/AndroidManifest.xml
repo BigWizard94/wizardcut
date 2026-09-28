@@ -19,7 +19,7 @@
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
 
     <application
-        android:name=".ClearCutApp"
+        android:name=".WizardCutApp"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -31,7 +31,7 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ClearCut"
+        android:theme="@style/Theme.WizardCut"
         android:usesCleartextTraffic="false"
         tools:targetApi="33">
 
@@ -53,10 +53,10 @@
             <!-- Explicit launcher/dynamic shortcuts must still match a declared
                  action when Android 16 strict intent matching is enabled. -->
             <intent-filter>
-                <action android:name="com.novacut.editor.action.NEW_PROJECT" />
-                <action android:name="com.novacut.editor.action.OPEN_RECENT" />
-                <action android:name="com.novacut.editor.action.RESUME_RECOVERED" />
-                <action android:name="com.novacut.editor.action.OPEN_LAST_PROJECT" />
+                <action android:name="info.bigwizardmedia.wizardcut.action.NEW_PROJECT" />
+                <action android:name="info.bigwizardmedia.wizardcut.action.OPEN_RECENT" />
+                <action android:name="info.bigwizardmedia.wizardcut.action.RESUME_RECOVERED" />
+                <action android:name="info.bigwizardmedia.wizardcut.action.OPEN_LAST_PROJECT" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>

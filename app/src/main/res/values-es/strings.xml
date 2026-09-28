@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name">ClearCut</string>
+    <string name="app_name">WizardCut</string>
     <!-- Importación de listas de cortes y marcadores -->
     <string name="cut_list_import_empty">No hay nada que importar: primero pega rangos de tiempo o marcadores</string>
     <string name="cut_list_import_no_valid_rows">No hay filas válidas: hay que corregir %1$d línea(s)</string>
@@ -39,7 +39,7 @@
     <string name="export_quick_presets">Preajustes rápidos</string>
     <string name="export_presets_description">Comience con un ajuste preestablecido listo para la plataforma, luego ajuste los detalles si este renderizado necesita algo personalizado.</string>
     <string name="export_more_presets">Más preajustes</string>
-    <string name="export_preset_reframe_disclosure">Este preajuste cambia el lienzo de salida de %1$s a %2$s. ClearCut ajustará la fuente a ese encuadre de entrega; revise el encuadre antes de exportar.</string>
+    <string name="export_preset_reframe_disclosure">Este preajuste cambia el lienzo de salida de %1$s a %2$s. WizardCut ajustará la fuente a ese encuadre de entrega; revise el encuadre antes de exportar.</string>
     <string name="export_audio_only">Sólo audio</string>
     <string name="export_audio_only_description">Omita la reproducción de video y exporte un solo maestro de audio.</string>
     <string name="export_resolution">Resolución</string>
@@ -62,7 +62,7 @@
     <string name="export_smart_render_detail">%1$d%% de la línea de tiempo puede transmitirse. %2$d rangos se copian directamente; %3$d necesita volver a codificarse.</string>
     <string name="export_delivery_summary">Resumen de entrega</string>
     <string name="export_delivery_options">Opciones de entrega</string>
-    <string name="export_delivery_options_description">Ajuste las especificaciones que ClearCut utilizará para esta exportación.</string>
+    <string name="export_delivery_options_description">Ajuste las especificaciones que WizardCut utilizará para esta exportación.</string>
     <string name="export_target_size">Tamaño del archivo de destino</string>
     <string name="export_target_size_description">Restrinja la salida para que se ajuste a los límites de carga de la plataforma. Selecciona automáticamente la tasa de bits.</string>
     <string name="export_estimated_size_format">Tamaño de archivo estimado: %1$s</string>
@@ -125,19 +125,19 @@
     <string name="export_range_end_exclusive_note">El final es un límite de fotograma exclusivo, por lo que los rangos adyacentes no duplican un fotograma.</string>
     <string name="export_range_invalid">El rango de exportación seleccionado está incompleto o fuera de la línea de tiempo del proyecto.</string>
     <string name="export_color_confidence_title">Confianza en color/HDR</string>
-    <string name="export_color_confidence_description">ClearCut verifica el códec elegido, la intención de los metadatos y los límites del dispositivo anunciado antes de exportar.</string>
+    <string name="export_color_confidence_description">WizardCut verifica el códec elegido, la intención de los metadatos y los límites del dispositivo anunciado antes de exportar.</string>
     <string name="compound_breadcrumb_root">Proyecto</string>
     <string name="compound_breadcrumb_separator">▸</string>
     <string name="compound_breadcrumb_fallback_format">Grupo %1$d</string>
     <string name="compound_breadcrumb_exit_cd">Salir del clip compuesto</string>
     <string name="settings_privacy_section_title">Privacidad</string>
-    <string name="settings_privacy_section_description">Revise lo que ClearCut guarda en este dispositivo y lo que nunca envía a ninguna parte.</string>
+    <string name="settings_privacy_section_description">Revise lo que WizardCut guarda en este dispositivo y lo que nunca envía a ninguna parte.</string>
     <string name="settings_privacy_open_label">Abrir panel de privacidad</string>
-    <string name="settings_privacy_open_description">Toque para ver cada categoría que recopila ClearCut, dónde reside y cómo controlarla.</string>
+    <string name="settings_privacy_open_description">Toque para ver cada categoría que recopila WizardCut, dónde reside y cómo controlarla.</string>
     <string name="settings_privacy_open_action">Abierto</string>
     <string name="settings_privacy_close">Cerrar</string>
     <string name="privacy_dashboard_title">Privacidad</string>
-    <string name="privacy_dashboard_subtitle">Qué recopila ClearCut, dónde vive y cómo controlarlo.</string>
+    <string name="privacy_dashboard_subtitle">Qué recopila WizardCut, dónde vive y cómo controlarlo.</string>
     <string name="privacy_dashboard_section_cloud">Nube y telemetría</string>
     <string name="privacy_dashboard_section_on_device">Almacenado en este dispositivo</string>
     <string name="privacy_dashboard_section_opt_in">Funciones de suscripción (desactivadas de forma predeterminada)</string>
@@ -186,7 +186,7 @@
     <string name="export_ai_use_empty">No se registró asistencia de IA para este proyecto.</string>
     <string name="export_ai_use_disclose_title">Divulgar uso de IA</string>
     <string name="export_ai_use_sidecar_title">Escribir sidecar de uso de IA</string>
-    <string name="export_ai_use_sidecar_description">Crea .ai-use.json y un .c2pa-draft-manifest.json sin firmar y no verificable. Esta versión de ClearCut no incrusta credenciales de contenido.</string>
+    <string name="export_ai_use_sidecar_description">Crea .ai-use.json y un .c2pa-draft-manifest.json sin firmar y no verificable. Esta versión de WizardCut no incrusta credenciales de contenido.</string>
     <string name="export_ai_ledger_clear_button">Borrar registro de IA</string>
     <string name="export_ai_ledger_clear_title">¿Borrar registro de IA?</string>
     <string name="export_ai_ledger_clear_message">Esto elimina el registro de uso de IA por proyecto que se usa para los valores de divulgación y la exportación sidecar.</string>
@@ -279,7 +279,7 @@
     <string name="ai_remove_segmentation_message">Esto elimina el archivo de segmentación de fondo local y desactiva la calidad mate AI hasta que lo descargue nuevamente. Las ediciones existentes permanecen intactas.</string>
     <string name="ai_whisper_removed_toast">Se eliminó el modelo Whisper. Puedes descargarlo nuevamente en cualquier momento.</string>
     <string name="ai_segmentation_removed_toast">Se eliminó el modelo de segmentación. Puedes descargarlo nuevamente en cualquier momento.</string>
-    <string name="ai_model_remove_failed_toast">ClearCut no pudo eliminar ese modelo. Inténtalo de nuevo desde AI Tools.</string>
+    <string name="ai_model_remove_failed_toast">WizardCut no pudo eliminar ese modelo. Inténtalo de nuevo desde AI Tools.</string>
     <string name="ai_whisper_downloading_toast">Descargando modelo de voz Whisper…</string>
     <string name="ai_whisper_ready_toast">Modelo Whisper listo.</string>
     <string name="ai_segmentation_downloading_toast">Descargando modelo de segmentación…</string>
@@ -417,7 +417,7 @@
     <string name="color_lut_import_failed_toast">No se pudo importar el LUT. Revise el archivo e inténtelo de nuevo.</string>
     <string name="color_lut_too_large_toast">El LUT es demasiado grande. El límite es 32 MB.</string>
     <string name="export_video_failed_message">La exportación falló. Revise la línea de tiempo e inténtelo de nuevo.</string>
-    <string name="export_storage_unknown_size">ClearCut no puede limitar de forma segura el uso de almacenamiento de esta exportación. %1$s</string>
+    <string name="export_storage_unknown_size">WizardCut no puede limitar de forma segura el uso de almacenamiento de esta exportación. %1$s</string>
     <string name="export_storage_insufficient">No hay suficiente %1$s: se necesitan %2$s y hay %3$s disponibles. %4$s</string>
     <string name="export_storage_location_output">espacio en el destino de exportación</string>
     <string name="export_storage_location_cache">almacenamiento temporal</string>
@@ -556,7 +556,7 @@
     <string name="ai_requirement_body_ready">El modelo está instalado en este dispositivo. Toca para ejecutar.</string>
     <string name="ai_requirement_body_download_format">%1$s necesita descargar aproximadamente %2$d MB. El modelo se ejecuta en este dispositivo, sin cargas.</string>
     <string name="ai_requirement_body_dependency">%1$s aún no está incluido en esta compilación. Lo agregaremos en una versión futura.</string>
-    <string name="ai_requirement_body_cloud_format">%1$s envía tramas a un servicio en la nube. ClearCut nunca realiza una llamada de red hasta que usted confirme aquí.</string>
+    <string name="ai_requirement_body_cloud_format">%1$s envía tramas a un servicio en la nube. WizardCut nunca realiza una llamada de red hasta que usted confirme aquí.</string>
     <string name="ai_requirement_size_format">Tamaño de descarga · %1$d MB</string>
     <string name="ai_requirement_license_format">Licencia · %1$s</string>
     <string name="ai_requirement_runtime_on_device">Se ejecuta en este dispositivo</string>
@@ -569,7 +569,7 @@
     <string name="noise_reduction_description">Analiza el audio para detectar el tipo de ruido (silbido, zumbido, banda ancha) y aplica automáticamente los mejores filtros DSP.</string>
     <string name="noise_reduction_analyzing">Analizando el perfil de ruido\u2026</string>
     <string name="noise_reduction_analyze_button">Analizar y arreglar ruido</string>
-    <string name="noise_reduction_subtitle">Perfile silbidos, zumbidos y ruidos de banda ancha, luego deje que ClearCut limpie la pista antes de pasar la mezcla final.</string>
+    <string name="noise_reduction_subtitle">Perfile silbidos, zumbidos y ruidos de banda ancha, luego deje que WizardCut limpie la pista antes de pasar la mezcla final.</string>
     <string name="noise_reduction_profile_title">Perfil de ruido</string>
     <string name="noise_reduction_profile_ready">Perfil listo</string>
     <string name="noise_reduction_awaiting_scan">En espera de escaneo</string>
@@ -582,7 +582,7 @@
     <string name="noise_reduction_type_broadband">Banda ancha</string>
     <string name="noise_reduction_cleanup_applied">Limpieza aplicada</string>
     <string name="noise_reduction_no_result_title">Aún no hay resultados de análisis</string>
-    <string name="noise_reduction_no_result_description">Ejecute la pasada una vez y ClearCut mostrará el perfil detectado aquí para que pueda juzgar si la limpieza va en la dirección correcta.</string>
+    <string name="noise_reduction_no_result_description">Ejecute la pasada una vez y WizardCut mostrará el perfil detectado aquí para que pueda juzgar si la limpieza va en la dirección correcta.</string>
     <string name="audio_norm_title">Normalización de audio</string>
     <string name="audio_norm_description">Ajustar los niveles de audio a un estándar de sonoridad objetivo</string>
     <string name="audio_norm_target">Objetivo</string>
@@ -598,7 +598,7 @@
     <string name="audio_norm_custom">personalizado</string>
     <string name="audio_norm_subtitle">Haga coincidir el volumen del clip con el objetivo de entrega antes de exportar o acumular más efectos.</string>
     <string name="audio_norm_loudness_target_title">objetivo de sonoridad</string>
-    <string name="audio_norm_loudness_target_description">Elija un perfil de entrega y ClearCut reequilibrará el clip seleccionado alrededor de ese objetivo LUFS.</string>
+    <string name="audio_norm_loudness_target_description">Elija un perfil de entrega y WizardCut reequilibrará el clip seleccionado alrededor de ese objetivo LUFS.</string>
     <string name="audio_norm_current_percent">%1$d%% actual</string>
     <string name="audio_norm_profiles_title">Perfiles de normalización</string>
     <string name="audio_norm_custom_description">Marque el objetivo exacto cuando coincida con una especificación de entrega o cadena de audio existente.</string>
@@ -612,7 +612,7 @@
     <string name="settings_title">Configuración</string>
     <string name="settings_subtitle">Ajuste los valores predeterminados de exportación, el comportamiento de la línea de tiempo, los modelos de IA y la comodidad de edición en un solo lugar.</string>
     <string name="settings_export_defaults">Valores predeterminados de exportación</string>
-    <string name="settings_export_defaults_description">Elija los valores predeterminados que ClearCut utiliza cuando inicia una nueva exportación.</string>
+    <string name="settings_export_defaults_description">Elija los valores predeterminados que WizardCut utiliza cuando inicia una nueva exportación.</string>
     <string name="settings_default_resolution">Resolución predeterminada</string>
     <string name="settings_default_resolution_description">Se utiliza para renderizados nuevos hasta que lo anule.</string>
     <string name="settings_default_frame_rate">Velocidad de fotogramas predeterminada</string>
@@ -620,7 +620,7 @@
     <string name="settings_default_aspect_ratio">Relación de aspecto predeterminada</string>
     <string name="settings_default_aspect_ratio_description">Se aplica cuando inicias un nuevo proyecto o plantilla.</string>
     <string name="settings_default_codec">Códec predeterminado</string>
-    <string name="settings_default_codec_description">Elija primero el formato de entrega que sugiere ClearCut.</string>
+    <string name="settings_default_codec_description">Elija primero el formato de entrega que sugiere WizardCut.</string>
     <string name="settings_project_color_policy">Política de color del proyecto</string>
     <string name="settings_project_color_policy_description">Intención de color predeterminada actual utilizada por las comprobaciones de confianza de exportación.</string>
     <string name="settings_export_notifications">Notificaciones de exportación</string>
@@ -630,7 +630,7 @@
     <string name="settings_export_notifications_off">Apagado</string>
     <string name="settings_export_notifications_not_required">No requerido</string>
     <string name="settings_export_notifications_enabled_description">Android puede mostrar notificaciones de exportación mientras el progreso en la aplicación permanece disponible.</string>
-    <string name="settings_export_notifications_off_description">Las exportaciones aún se ejecutan, pero mantenga ClearCut abierto para el progreso y cancele los controles hasta que se habiliten las notificaciones.</string>
+    <string name="settings_export_notifications_off_description">Las exportaciones aún se ejecutan, pero mantenga WizardCut abierto para el progreso y cancele los controles hasta que se habiliten las notificaciones.</string>
     <string name="settings_export_notifications_not_required_description">Esta versión de Android no requiere una concesión de notificaciones en tiempo de ejecución para las notificaciones de exportación.</string>
     <string name="settings_export_notifications_open">Abrir configuración de notificaciones</string>
     <string name="settings_timeline">Línea de tiempo</string>
@@ -676,7 +676,7 @@
     <string name="settings_diagnostics">Diagnóstico</string>
     <string name="settings_diagnostics_description">Cree un paquete de soporte local solo cuando elija compartir uno.</string>
     <string name="settings_appearance">Apariencia</string>
-    <string name="settings_appearance_description">Elija la política de contraste del editor. ClearCut mantiene un lienzo oscuro y neutro hasta que una paleta clara tiene un control de calidad de captura de pantalla completo.</string>
+    <string name="settings_appearance_description">Elija la política de contraste del editor. WizardCut mantiene un lienzo oscuro y neutro hasta que una paleta clara tiene un control de calidad de captura de pantalla completo.</string>
     <string name="settings_appearance_mode">Modo de apariencia</string>
     <string name="settings_appearance_mode_description">Dark utiliza el lienzo oscuro estándar; Oscuro de alto contraste aumenta los trazos, los chips y los indicadores de texto.</string>
     <string name="settings_appearance_dark">oscuro</string>
@@ -699,14 +699,14 @@
     <string name="settings_diagnostic_export_share_failed">No se pudo compartir el ZIP de diagnóstico desde este dispositivo.</string>
     <string name="settings_reset_notice_message">La configuración se restableció a los valores predeterminados después de que no se pudo leer el archivo de preferencias. Se incluirá un informe de restablecimiento redactado en los ZIP de diagnóstico.</string>
     <string name="settings_updates_section_title">Actualizaciones</string>
-    <string name="settings_updates_section_description">Solo para instalaciones externas y de versiones de GitHub. ClearCut nunca descarga ni instala una actualización por ti.</string>
+    <string name="settings_updates_section_description">Solo para instalaciones externas y de versiones de GitHub. WizardCut nunca descarga ni instala una actualización por ti.</string>
     <string name="settings_update_check_label">Buscar actualizaciones</string>
-    <string name="settings_update_check_description">Cuando está activado, ClearCut hace una sola solicitud segura a la página de versiones de GitHub para ver si existe una versión más reciente. Desactivado de forma predeterminada.</string>
+    <string name="settings_update_check_description">Cuando está activado, WizardCut hace una sola solicitud segura a la página de versiones de GitHub para ver si existe una versión más reciente. Desactivado de forma predeterminada.</string>
     <string name="settings_update_check_now_label">Buscar ahora</string>
     <string name="settings_update_check_now_description">Compara la versión instalada con la última versión de GitHub.</string>
     <string name="settings_update_check_now_action">Buscar</string>
     <string name="settings_update_checking_action">Buscando…</string>
-    <string name="settings_update_up_to_date">ClearCut está actualizado.</string>
+    <string name="settings_update_up_to_date">WizardCut está actualizado.</string>
     <string name="settings_update_enable_prompt">Active la búsqueda de actualizaciones para ver nuevas versiones.</string>
     <string name="settings_update_check_failed">No se pudieron buscar actualizaciones. Inténtelo de nuevo más tarde.</string>
     <string name="settings_update_offline">No hay conexión a Internet. Vuelva a conectarse para buscar actualizaciones.</string>
@@ -758,7 +758,7 @@
     <string name="preview_resume_at">El contenido se reanuda en %1$s</string>
     <string name="preview_jump_to_content">Saltar al contenido</string>
     <string name="preview_unavailable_title">Vista previa no disponible</string>
-    <string name="preview_unavailable_body">ClearCut no pudo cargar esta fuente para una vista previa en vivo.</string>
+    <string name="preview_unavailable_body">WizardCut no pudo cargar esta fuente para una vista previa en vivo.</string>
     <string name="preview_playback_error_title">No se puede reproducir este clip</string>
     <string name="preview_playback_error_body">Es posible que la fuente se haya movido, no se pueda leer o use un formato que este dispositivo no pueda decodificar.</string>
     <string name="preview_open_media_manager">Abrir el gestor de medios</string>
@@ -821,7 +821,7 @@
     <string name="audio_select_clip_description">Seleccione un clip de la línea de tiempo para revelar aquí las opciones de forma de onda, fundidos, control de nivel y voz en off.</string>
     <string name="audio_waveform_ready">Forma de onda lista</string>
     <string name="audio_waveform_pending">Forma de onda pendiente</string>
-    <string name="audio_waveform_pending_description">La vista previa de la forma de onda aparecerá una vez que ClearCut haya decodificado el audio de este clip.</string>
+    <string name="audio_waveform_pending_description">La vista previa de la forma de onda aparecerá una vez que WizardCut haya decodificado el audio de este clip.</string>
     <string name="audio_voiceover_description">Grabe la narración directamente sobre el corte sin salir del espacio de trabajo de audio.</string>
     <string name="audio_voiceover_close_cd">Cerrar grabadora de voz en off</string>
     <string name="color_grading_title">Clasificación de color</string>
@@ -988,7 +988,7 @@
     <string name="batch_export_suffix_audio_only">Sólo audio</string>
     <string name="batch_export_suffix_stems">Tallos</string>
     <string name="batch_export_queue_title">Cola de entrega</string>
-    <string name="batch_export_queue_description">Cree una pila de exportaciones, mueva los elementos para definir la prioridad y deje que ClearCut los ejecute consecutivamente.</string>
+    <string name="batch_export_queue_description">Cree una pila de exportaciones, mueva los elementos para definir la prioridad y deje que WizardCut los ejecute consecutivamente.</string>
     <string name="batch_export_add_targets_description">Toque cualquier ajuste preestablecido para agregarlo a la cola, luego siga acumulando exportaciones de utilidades para solo audio o temas si los necesita.</string>
     <string name="batch_export_source_cuts_title">Cortes de archivos fuente</string>
     <string name="batch_export_source_cuts_description">Ponga en cola un clip existente de la línea de tiempo como un intervalo de fuente independiente. Cada corte exporta su propio archivo con los ajustes de entrega actuales.</string>
@@ -998,7 +998,7 @@
     <string name="batch_export_empty_title">Nada en cola todavía</string>
     <string name="batch_export_empty_description">Deje abierto el panel de agregar y toque los objetivos que desea acumular.</string>
     <string name="batch_export_run_title">Ejecute el lote</string>
-    <string name="batch_export_run_description">ClearCut ejecuta los elementos en el orden guardado. La pausa conserva un video parcial elegible; los codificadores que no pueden pausarse se reinician.</string>
+    <string name="batch_export_run_description">WizardCut ejecuta los elementos en el orden guardado. La pausa conserva un video parcial elegible; los codificadores que no pueden pausarse se reinician.</string>
     <string name="batch_export_status_ready">Listo</string>
     <string name="batch_export_status_queued">En cola</string>
     <string name="batch_export_status_in_progress">Exportación en curso</string>
@@ -1074,13 +1074,13 @@
     <string name="media_picker_multi_description">Seleccione varias fotos o vídeos de una sola vez.</string>
     <string name="media_picker_record_video">Abrir app de cámara</string>
     <string name="media_picker_capture_title">Transferencia a cámara externa</string>
-    <string name="media_picker_capture_description">ClearCut abre la app de cámara del dispositivo, recibe solo el clip devuelto y no solicita permiso de cámara para esta transferencia.</string>
+    <string name="media_picker_capture_description">WizardCut abre la app de cámara del dispositivo, recibe solo el clip devuelto y no solicita permiso de cámara para esta transferencia.</string>
     <string name="media_picker_source_photo_picker">Selector de fotos del sistema</string>
     <string name="media_picker_source_files">selector de archivos</string>
     <string name="media_picker_source_audio">Archivos de audio</string>
     <string name="media_picker_source_kept_local">Las importaciones permanecen disponibles sin conexión</string>
-    <string name="media_picker_local_copy_failed">ClearCut no pudo mantener ese medio disponible localmente. Intente elegirlo nuevamente.</string>
-    <string name="media_picker_camera_handoff_failed">ClearCut no pudo abrir una app de cámara. En su lugar, intente importar un clip de su biblioteca.</string>
+    <string name="media_picker_local_copy_failed">WizardCut no pudo mantener ese medio disponible localmente. Intente elegirlo nuevamente.</string>
+    <string name="media_picker_camera_handoff_failed">WizardCut no pudo abrir una app de cámara. En su lugar, intente importar un clip de su biblioteca.</string>
     <string name="media_picker_camera_empty_capture">La app de cámara devolvió un clip vacío. Intente grabar de nuevo o importe un clip de su biblioteca.</string>
     <string name="media_picker_some_imports_failed">Algunos medios no se pudieron guardar localmente. Se agregaron las importaciones exitosas.</string>
     <string name="media_picker_importing_batch_title">Preparando medios</string>
@@ -1097,7 +1097,7 @@
     <string name="audio_conformance_mixed_channels">Los clips tienen configuraciones de canales mixtas. El audio se normalizará para la exportación.</string>
     <string name="media_picker_audio_only">Ese archivo no es audio. Elija un .mp3, .m4a, .wav, .ogg o .flac.</string>
     <string name="media_sequence_review_title">Revisar secuencia inicial</string>
-    <string name="media_sequence_review_description">Elija el orden antes de que ClearCut agregue estos archivos locales como una sola secuencia que se pueda deshacer.</string>
+    <string name="media_sequence_review_description">Elija el orden antes de que WizardCut agregue estos archivos locales como una sola secuencia que se pueda deshacer.</string>
     <string name="media_sequence_review_reorder_hint">Arrastre un elemento para reordenarlo o use los botones de flecha.</string>
     <string name="media_sequence_review_capture_time">Hora de captura</string>
     <string name="media_sequence_review_name">Nombre</string>
@@ -1110,7 +1110,7 @@
     <string name="media_sequence_review_move_down_cd">Mover %1$s hacia abajo</string>
     <string name="media_sequence_review_capture_unknown">Hora de captura no disponible</string>
     <string name="media_sequence_review_item_detail">%1$s • capturado %2$s</string>
-    <string name="projects_app_title">ClearCut</string>
+    <string name="projects_app_title">WizardCut</string>
     <string name="projects_count">%1$d proyecto%2$s</string>
     <string name="projects_settings">Configuración</string>
     <string name="projects_headline">Cree ediciones más nítidas con menos fricción.</string>
@@ -1202,14 +1202,14 @@
     <string name="projects_operation_template_delete_title">Eliminando plantilla</string>
     <string name="projects_operation_template_delete_body">Eliminando la configuración guardada manteniendo sus proyectos intactos.</string>
     <string name="project_duplicate_success">Proyecto duplicado</string>
-    <string name="project_import_invalid_video">ClearCut no pudo importar ese video. Elija un archivo de video legible e inténtelo nuevamente.</string>
-    <string name="project_import_invalid_media">ClearCut no pudo importar ese medio compartido. Elija archivos de video, imagen o audio legibles e inténtelo nuevamente.</string>
+    <string name="project_import_invalid_video">WizardCut no pudo importar ese video. Elija un archivo de video legible e inténtelo nuevamente.</string>
+    <string name="project_import_invalid_media">WizardCut no pudo importar ese medio compartido. Elija archivos de video, imagen o audio legibles e inténtelo nuevamente.</string>
     <string name="project_import_partial_success">Importó %1$d de %2$d archivos compartidos.</string>
     <string name="project_imported_default_name">Importado</string>
     <string name="project_template_import_success">Plantilla importada: %1$s</string>
     <string name="project_template_import_partial_warning">Advertencia: se omitió %1$s de la plantilla.</string>
     <string name="project_template_import_failed">Error al importar la plantilla</string>
-    <string name="project_template_import_incompatible">La plantilla necesita una versión más reciente de ClearCut o herramientas no compatibles.</string>
+    <string name="project_template_import_incompatible">La plantilla necesita una versión más reciente de WizardCut o herramientas no compatibles.</string>
     <string name="project_template_import_invalid">El archivo de plantilla no es legible.</string>
     <string name="project_template_import_too_large">El archivo de plantilla es demasiado grande.</string>
     <string name="project_document_import_confirm">Importar</string>
@@ -1284,7 +1284,7 @@
     <string name="editor_timeline">Línea de tiempo</string>
     <string name="editor_toggle_timeline">Alternar línea de tiempo</string>
     <string name="editor_share_video">compartir vídeo</string>
-    <string name="editor_share_location_failed">ClearCut no pudo crear un enlace compartido seguro para ese archivo. Exporta de nuevo y luego intenta compartir.</string>
+    <string name="editor_share_location_failed">WizardCut no pudo crear un enlace compartido seguro para ese archivo. Exporta de nuevo y luego intenta compartir.</string>
     <string name="editor_select_clip_effects">Seleccione un clip para usar efectos</string>
     <string name="editor_select_clip_color_grade">Seleccione un clip para graduar el color</string>
     <string name="editor_select_clip_keyframes">Seleccionar un clip para keyframes</string>
@@ -1507,7 +1507,7 @@
     <string name="undo_history_stack_empty_summary">Aún no se han registrado acciones que se puedan deshacer en esta sesión.</string>
     <string name="undo_history_stack_ready_summary">La fila resaltada es el estado actual. Toque cualquier paso anterior para retroceder la línea de tiempo con un solo movimiento.</string>
     <string name="undo_history_empty_title">Aún no hay ediciones para revertir</string>
-    <string name="undo_history_empty_body">Tan pronto como recorte, mueva o ajuste algo en la línea de tiempo, ClearCut mantendrá esos pasos aquí para que pueda restaurar un estado anterior con confianza.</string>
+    <string name="undo_history_empty_body">Tan pronto como recorte, mueva o ajuste algo en la línea de tiempo, WizardCut mantendrá esos pasos aquí para que pueda restaurar un estado anterior con confianza.</string>
     <string name="undo_history_live_state">Estado vivo</string>
     <string name="undo_history_step_format">Paso %1$d</string>
     <string name="undo_history_newer_count">%1$d más nuevo</string>
@@ -1646,7 +1646,7 @@
     <string name="snapshot_status_empty">Aún no hay instantáneas</string>
     <string name="snapshot_status_ready">Puntos de restauración listos</string>
     <string name="snapshot_restore_title">¿Restaurar instantánea?</string>
-    <string name="snapshot_restore_body">¿Restaurar “%1$s”? Esto reemplaza la línea de tiempo actual, las superposiciones, los marcadores, los dibujos, los capítulos y el cabezal de reproducción con este punto de control. ClearCut guarda primero un punto de deshacer.</string>
+    <string name="snapshot_restore_body">¿Restaurar “%1$s”? Esto reemplaza la línea de tiempo actual, las superposiciones, los marcadores, los dibujos, los capítulos y el cabezal de reproducción con este punto de control. WizardCut guarda primero un punto de deshacer.</string>
     <string name="snapshot_restore_confirm">Restaurar instantánea</string>
     <string name="snapshot_restored_success">Instantánea restaurada: %1$s</string>
     <string name="snapshot_restore_failed">No se pudo restaurar la instantánea</string>
@@ -1785,7 +1785,7 @@
     <string name="beat_sync_apply">Aplicar sincronización de ritmo</string>
     <string name="beat_sync_subtitle">Encuentre el surco, marque el pulso y realice cortes al ritmo sin frotar con la mano.</string>
     <string name="beat_sync_rhythm_overview_title">Descripción general del ritmo</string>
-    <string name="beat_sync_overview_ready">ClearCut tiene listo un mapa de ritmos. Puede refinar el pulso manualmente antes de enviarlo a la línea de tiempo.</string>
+    <string name="beat_sync_overview_ready">WizardCut tiene listo un mapa de ritmos. Puede refinar el pulso manualmente antes de enviarlo a la línea de tiempo.</string>
     <string name="beat_sync_overview_empty">Comience con la detección de ritmo o toque en vivo mientras se ejecuta la reproducción de vista previa.</string>
     <string name="beat_sync_no_beat_map">Mapa sin ritmo</string>
     <string name="beat_sync_bpm_value">%1$d BPM</string>
@@ -1797,7 +1797,7 @@
     <string name="beat_sync_playback_hint">Inicie la reproducción para tocar los ritmos en vivo después del primer pase de análisis.</string>
     <string name="beat_sync_timeline_title">Batir la línea de tiempo</string>
     <string name="beat_sync_timeline_ready">Revise el pulso detectado antes de aplicarlo a sus decisiones de edición.</string>
-    <string name="beat_sync_timeline_empty">Los marcadores detectados aparecerán aquí tan pronto como ClearCut mapee el ritmo.</string>
+    <string name="beat_sync_timeline_empty">Los marcadores detectados aparecerán aquí tan pronto como WizardCut mapee el ritmo.</string>
     <string name="beat_sync_no_markers">Aún no hay marcadores</string>
     <string name="beat_sync_bpm_placeholder">No disponible</string>
     <string name="beat_sync_apply_title">Aplicar sincronización de ritmo</string>
@@ -1812,7 +1812,7 @@
     <string name="render_preview_play_cd">Reproducir vista previa renderizada</string>
     <string name="render_preview_subtitle">Vea qué secciones se pueden transmitir sin tocar y qué tomas aún necesitan un pase de renderizado completo.</string>
     <string name="render_preview_outlook_empty_title">Nada que analizar todavía</string>
-    <string name="render_preview_outlook_empty_body">Agregue clips a la línea de tiempo y ClearCut asignará qué rangos se pueden copiar directamente y cuáles aún necesitan renderizarse.</string>
+    <string name="render_preview_outlook_empty_body">Agregue clips a la línea de tiempo y WizardCut asignará qué rangos se pueden copiar directamente y cuáles aún necesitan renderizarse.</string>
     <string name="render_preview_outlook_instant_title">Camino rápido disponible</string>
     <string name="render_preview_outlook_instant_body">Cada segmento analizado puede transmitirse sin modificaciones, por lo que esta exportación debería terminar más cerca de una copia de archivo que de una renderización completa.</string>
     <string name="render_preview_outlook_mixed_title">Ruta de renderizado inteligente mixta</string>
@@ -1821,9 +1821,9 @@
     <string name="render_preview_outlook_full_body">Cada segmento analizado necesita procesamiento, así que espere que esta exportación se comporte como un render completo tradicional.</string>
     <string name="render_speedup_instant">Instantáneo</string>
     <string name="render_speedup_value">%1$.1fx</string>
-    <string name="render_preview_segments_description">Cada bloque muestra si ClearCut puede copiar ese rango directamente o tiene que renderizarlo nuevamente.</string>
+    <string name="render_preview_segments_description">Cada bloque muestra si WizardCut puede copiar ese rango directamente o tiene que renderizarlo nuevamente.</string>
     <string name="render_preview_empty_title">Aún no hay segmentos</string>
-    <string name="render_preview_empty_body">Una vez que los clips estén en la línea de tiempo, ClearCut dividirá la secuencia en rangos de copia continua y recodificación aquí.</string>
+    <string name="render_preview_empty_body">Una vez que los clips estén en la línea de tiempo, WizardCut dividirá la secuencia en rangos de copia continua y recodificación aquí.</string>
     <string name="render_preview_actions_title">Opciones de renderizado</string>
     <string name="render_preview_actions_body">Primero genere un renderizado de verificación liviano o salte directamente al flujo de exportación completo con la configuración actual.</string>
     <string name="render_actions_disabled_hint">Agregue al menos un clip para desbloquear acciones de vista previa y exportación.</string>
@@ -1866,7 +1866,7 @@
         <item quantity="many">%1$d vacío</item>
     </plurals>
     <string name="media_manager_scanning_title">Revisar medios vinculados</string>
-    <string name="media_manager_scanning_body">ClearCut está verificando cada fuente en la línea de tiempo para que las imágenes faltantes y las oportunidades de limpieza salgan a la luz antes de la exportación.</string>
+    <string name="media_manager_scanning_body">WizardCut está verificando cada fuente en la línea de tiempo para que las imágenes faltantes y las oportunidades de limpieza salgan a la luz antes de la exportación.</string>
     <string name="media_manager_scan_cancel">Cancelar escaneo</string>
     <string name="media_manager_scan_retry">Reintentar escaneo</string>
     <string name="media_manager_scan_failed_title">Falló el escaneo de medios</string>
@@ -1941,7 +1941,7 @@
     <string name="media_manager_empty_body">Los clips, fotos y audio importados aparecerán aquí tan pronto como aparezca algo en la línea de tiempo.</string>
     <string name="media_manager_cleanup_title">Limpieza de la línea de tiempo</string>
     <string name="media_manager_cleanup_ready">No hay pistas vacías que no sean las predeterminadas en este momento.</string>
-    <string name="media_manager_cleanup_needs_trim">ClearCut encontró pistas vacías no predeterminadas que se pueden eliminar para ajustar la pila de edición.</string>
+    <string name="media_manager_cleanup_needs_trim">WizardCut encontró pistas vacías no predeterminadas que se pueden eliminar para ajustar la pila de edición.</string>
     <plurals name="media_manager_empty_tracks_count">
         <item quantity="one">%1$d pista vacía</item>
         <item quantity="other">%1$d pistas vacías</item>
@@ -2001,7 +2001,7 @@
     <string name="smart_reframe_close_cd">Cerrar reencuadre inteligente</string>
     <string name="smart_reframe_subtitle">Vuelva a orientar el encuadre hacia diferentes plataformas mientras mantiene la toma enfocada en el sujeto.</string>
     <string name="smart_reframe_current_frame_title">Marco de entrega actual</string>
-    <string name="smart_reframe_current_frame_description">Elija una proporción de destino y ClearCut reconstruirá el cultivo para esa superficie.</string>
+    <string name="smart_reframe_current_frame_description">Elija una proporción de destino y WizardCut reconstruirá el cultivo para esa superficie.</string>
     <string name="smart_reframe_processing">Reencuadre</string>
     <string name="smart_reframe_targets_count">%1$d objetivos</string>
     <string name="smart_reframe_destination_title">Ratios de destino</string>
@@ -2109,7 +2109,7 @@
     <string name="mixer_param_bandwidth">Ancho de banda</string>
     <string name="mixer_param_generic">%1$s</string>
     <string name="panel_cloud_backup_title">Transferencia de archivo</string>
-    <string name="panel_cloud_backup_description">Exporte un archivo portátil del proyecto a Descargas/ClearCut/. Impórtelo después para restaurar esta edición en un dispositivo que controle.</string>
+    <string name="panel_cloud_backup_description">Exporte un archivo portátil del proyecto a Descargas/WizardCut/. Impórtelo después para restaurar esta edición en un dispositivo que controle.</string>
     <string name="panel_cloud_backup_estimated_size">Tamaño estimado</string>
     <string name="panel_cloud_backup_last_backup">Último archivo</string>
     <string name="panel_cloud_backup_never">nunca</string>
@@ -2123,13 +2123,13 @@
     <string name="panel_cloud_backup_status_empty_title">Aún no se ha guardado ningún archivo</string>
     <string name="panel_cloud_backup_status_empty_body">Cree un archivo de proyecto antes de cambios riesgosos para tener un punto de reversión limpio que viaje con la edición.</string>
     <string name="panel_cloud_backup_status_exporting_title">Preparando el archivo del proyecto</string>
-    <string name="panel_cloud_backup_status_exporting_body">ClearCut empaqueta la línea de tiempo, las referencias de medios vinculados y el estado actual del proyecto en un archivo portátil.</string>
+    <string name="panel_cloud_backup_status_exporting_body">WizardCut empaqueta la línea de tiempo, las referencias de medios vinculados y el estado actual del proyecto en un archivo portátil.</string>
     <string name="panel_cloud_backup_status_importing_title">Restaurando el archivo del proyecto</string>
-    <string name="panel_cloud_backup_status_importing_body">ClearCut está descomprimiendo el archivo, reconectando los medios empaquetados y reconstruyendo el estado de la línea de tiempo.</string>
+    <string name="panel_cloud_backup_status_importing_body">WizardCut está descomprimiendo el archivo, reconectando los medios empaquetados y reconstruyendo el estado de la línea de tiempo.</string>
     <string name="panel_cloud_backup_status_ready_title">Archivo portátil listo</string>
     <string name="panel_cloud_backup_status_ready_body">Tenga a mano un archivo reciente antes de revisiones importantes, transferencias de dispositivos o notas de revisión del cliente.</string>
     <string name="panel_cloud_backup_archive_title">Archivo de proyectos portátil</string>
-    <string name="panel_cloud_backup_archive_body">Las exportaciones llegan a Descargas/ClearCut para que sean fáciles de compartir, mover a otro dispositivo o conservar como puntos de reversión antes de realizar ediciones importantes.</string>
+    <string name="panel_cloud_backup_archive_body">Las exportaciones llegan a Descargas/WizardCut para que sean fáciles de compartir, mover a otro dispositivo o conservar como puntos de reversión antes de realizar ediciones importantes.</string>
     <string name="panel_cloud_backup_archive_include_title">lo que se empaca</string>
     <string name="panel_cloud_backup_archive_include_body">Cada archivo mantiene portátiles la edición, los medios administrados, los LUT, las fuentes personalizadas y los recursos de marca de agua sin renderizar. Las referencias externas faltantes quedan visibles para volver a vincularlas.</string>
     <string name="panel_cloud_backup_include_timeline">Estructura de la línea de tiempo</string>
@@ -2139,7 +2139,7 @@
     <string name="panel_cloud_backup_actions_body">Cree un archivo nuevo antes de realizar cambios riesgosos o importe uno para restaurar todo el proyecto en este dispositivo.</string>
     <string name="panel_cloud_backup_actions_busy">Las acciones de archivo se desbloquean nuevamente tan pronto como finaliza la operación actual.</string>
     <string name="panel_cloud_backup_import_confirm_title">¿Reemplazar la línea de tiempo actual?</string>
-    <string name="panel_cloud_backup_import_confirm_body">Esto importa el archivo seleccionado al proyecto abierto y reemplaza la línea de tiempo, las superposiciones, los marcadores, los dibujos, los ritmos y la transcripción actuales. ClearCut guarda un punto de deshacer antes de restaurar.</string>
+    <string name="panel_cloud_backup_import_confirm_body">Esto importa el archivo seleccionado al proyecto abierto y reemplaza la línea de tiempo, las superposiciones, los marcadores, los dibujos, los ritmos y la transcripción actuales. WizardCut guarda un punto de deshacer antes de restaurar.</string>
     <string name="panel_cloud_backup_import_confirm_action">Reemplazar línea de tiempo</string>
     <string name="panel_chroma_key_title">Clave de croma</string>
     <string name="panel_chroma_key_alpha_matte">Mate alfa</string>
@@ -2260,9 +2260,9 @@
     <string name="video_scopes_status_analyzing">analizando</string>
     <string name="video_scopes_status_ready">en vivo</string>
     <string name="video_scopes_waiting_title">Aún no hay marco disponible</string>
-    <string name="video_scopes_waiting_body">Haga una pausa en un cuadro visible o desplácese por la línea de tiempo para que ClearCut pueda analizar la imagen actual.</string>
+    <string name="video_scopes_waiting_body">Haga una pausa en un cuadro visible o desplácese por la línea de tiempo para que WizardCut pueda analizar la imagen actual.</string>
     <string name="video_scopes_loading_title">Marco de análisis</string>
-    <string name="video_scopes_loading_body">ClearCut está muestreando la imagen actual para el alcance seleccionado.</string>
+    <string name="video_scopes_loading_body">WizardCut está muestreando la imagen actual para el alcance seleccionado.</string>
     <plurals name="blend_mode_modes_count">
         <item quantity="one">Modo %1$d</item>
         <item quantity="other">%1$d modos</item>
@@ -2406,11 +2406,11 @@
     <string name="cd_preview_image_overlay_missing">Falta la fuente de superposición de imágenes</string>
     <string name="projects_empty_title">Aún no hay proyectos</string>
     <string name="projects_empty_subtitle">Toque el botón + para crear su primer proyecto de video.</string>
-    <string name="project_create_failed">ClearCut no pudo crear ese proyecto en este momento. Verifique el almacenamiento disponible e inténtelo nuevamente.</string>
-    <string name="project_duplicate_failed">ClearCut no pudo duplicar ese proyecto en este momento.</string>
+    <string name="project_create_failed">WizardCut no pudo crear ese proyecto en este momento. Verifique el almacenamiento disponible e inténtelo nuevamente.</string>
+    <string name="project_duplicate_failed">WizardCut no pudo duplicar ese proyecto en este momento.</string>
     <string name="project_delete_success">Proyecto eliminado: %1$s</string>
-    <string name="project_delete_failed">ClearCut no pudo eliminar ese proyecto en este momento.</string>
-    <string name="project_import_copy_failed">ClearCut no pudo copiar ese medio en el almacenamiento local.</string>
+    <string name="project_delete_failed">WizardCut no pudo eliminar ese proyecto en este momento.</string>
+    <string name="project_import_copy_failed">WizardCut no pudo copiar ese medio en el almacenamiento local.</string>
     <string name="cd_smart_reframe">Replanteo inteligente</string>
     <string name="cd_clip_thumbnail">Miniatura del clip</string>
     <string name="cd_clip_source_missing">Fuente del clip no encontrada</string>
@@ -2427,7 +2427,7 @@
     <string name="settings_default_track_height">Altura de pista predeterminada</string>
     <string name="settings_default_track_height_description">Elige qué tan espaciosas deberían sentirse las nuevas pistas.</string>
     <string name="settings_default_mode">Modo predeterminado</string>
-    <string name="settings_default_mode_description">Elija la profundidad de edición con la que se abre ClearCut.</string>
+    <string name="settings_default_mode_description">Elija la profundidad de edición con la que se abre WizardCut.</string>
     <string name="settings_mode_easy">fácil</string>
     <string name="settings_mode_pro">profesional</string>
     <string name="settings_haptic_feedback">Retroalimentación háptica</string>
@@ -2504,7 +2504,7 @@
     <string name="media_status_missing">desaparecido</string>
     <string name="media_status_unverified">No verificado</string>
     <string name="media_source_unavailable">Este archivo fuente falta en este dispositivo. Vuelva a vincularlo antes de exportarlo para que las vistas previas y las renderizaciones no recurran a los medios faltantes.</string>
-    <string name="media_source_unverified">ClearCut no pudo verificar este URI de origen. Vuelva a vincularlo antes de exportarlo para que las vistas previas y los renderizados utilicen un archivo confirmado.</string>
+    <string name="media_source_unverified">WizardCut no pudo verificar este URI de origen. Vuelva a vincularlo antes de exportarlo para que las vistas previas y los renderizados utilicen un archivo confirmado.</string>
     <string name="cd_media_goto">Ir al clip</string>
     <string name="cd_media_missing">desaparecido</string>
     <string name="export_eta_remaining">~%1$s restante</string>
@@ -2551,9 +2551,9 @@
     </plurals>
     <string name="recovery_media_proxy_title">Respaldo de proxy de vista previa</string>
     <plurals name="recovery_media_proxy_body">
-        <item quantity="one">Falta %1$d proxy de vista previa o está vacío. ClearCut usará los medios de origen mientras se reconstruye el proxy.</item>
-        <item quantity="other">Faltan %1$d proxies de vista previa o están vacíos. ClearCut usará los medios de origen mientras se reconstruyen los proxies.</item>
-        <item quantity="many">Faltan %1$d proxies de vista previa o están vacíos. ClearCut usará los medios de origen mientras se reconstruyen los proxies.</item>
+        <item quantity="one">Falta %1$d proxy de vista previa o está vacío. WizardCut usará los medios de origen mientras se reconstruye el proxy.</item>
+        <item quantity="other">Faltan %1$d proxies de vista previa o están vacíos. WizardCut usará los medios de origen mientras se reconstruyen los proxies.</item>
+        <item quantity="many">Faltan %1$d proxies de vista previa o están vacíos. WizardCut usará los medios de origen mientras se reconstruyen los proxies.</item>
     </plurals>
     <string name="recovery_media_warning_title">Se encontraron advertencias de medios</string>
     <plurals name="recovery_media_warning_body">
@@ -2586,22 +2586,22 @@
     <string name="notif_export_failed_default">Exportación fallida</string>
     <string name="export_media_processing_timeout_error">La exportación se detuvo porque Android alcanzó su límite de tiempo de procesamiento de medios en segundo plano. Inicie la exportación nuevamente cuando el dispositivo permita más tiempo de procesamiento.</string>
     <string name="export_notification_permission_title">Mantenga visible el progreso de la exportación</string>
-    <string name="export_notification_permission_message">ClearCut utiliza notificaciones de exportación para el progreso en segundo plano, la finalización, los errores, las advertencias térmicas y los controles de cancelación. Si omite esto, mantenga el editor abierto para monitorear y cancelar la exportación en la aplicación.</string>
+    <string name="export_notification_permission_message">WizardCut utiliza notificaciones de exportación para el progreso en segundo plano, la finalización, los errores, las advertencias térmicas y los controles de cancelación. Si omite esto, mantenga el editor abierto para monitorear y cancelar la exportación en la aplicación.</string>
     <string name="export_notification_permission_allow">Permitir notificaciones</string>
     <string name="export_notification_permission_not_now">Ahora no</string>
-    <string name="export_notification_permission_fallback">Las notificaciones de exportación están desactivadas. Mantenga ClearCut abierto para progresar y cancelar controles.</string>
+    <string name="export_notification_permission_fallback">Las notificaciones de exportación están desactivadas. Mantenga WizardCut abierto para progresar y cancelar controles.</string>
     <string name="notif_export_thermal_progress_light">calentándose, exportación en curso</string>
     <string name="notif_export_thermal_progress_heavy">caliente, exportación en curso</string>
     <string name="notif_export_thermal_progress_cooling">se recomienda enfriar, exportación en curso</string>
     <string name="notif_export_thermal_progress_stop">deteniéndose</string>
     <string name="notif_export_thermal_light_title">El dispositivo se está calentando. La exportación continúa</string>
-    <string name="notif_export_thermal_light_text">La temperatura del dispositivo está aumentando. La exportación continúa sin cambios y ClearCut seguirá supervisándola.</string>
+    <string name="notif_export_thermal_light_text">La temperatura del dispositivo está aumentando. La exportación continúa sin cambios y WizardCut seguirá supervisándola.</string>
     <string name="notif_export_thermal_heavy_title">El dispositivo está caliente. La exportación continúa</string>
     <string name="notif_export_thermal_heavy_text">La temperatura del dispositivo es alta. Este codificador no puede reducir su carga de forma segura, así que la exportación continúa sin cambios. Deje enfriar el dispositivo.</string>
     <string name="notif_export_thermal_cooling_title">Se recomienda enfriar. La exportación continúa</string>
-    <string name="notif_export_thermal_cooling_text">Android informa presión térmica crítica. Este codificador no puede pausarse de forma segura, así que la exportación continúa. ClearCut solo la cancelará si Android informa riesgo de apagado.</string>
+    <string name="notif_export_thermal_cooling_text">Android informa presión térmica crítica. Este codificador no puede pausarse de forma segura, así que la exportación continúa. WizardCut solo la cancelará si Android informa riesgo de apagado.</string>
     <string name="notif_export_thermal_stop_title">Exportación detenida por seguridad del dispositivo</string>
-    <string name="notif_export_thermal_stop_text">Android informó presión térmica a nivel de apagado, por lo que ClearCut canceló la exportación.</string>
+    <string name="notif_export_thermal_stop_text">Android informó presión térmica a nivel de apagado, por lo que WizardCut canceló la exportación.</string>
     <string name="cd_smart_reframe_close">Cerrar reencuadre inteligente</string>
     <string name="cd_sticker_import">Importar pegatina de la galería</string>
     <string name="cd_sticker_import_gallery">Importar desde la galería</string>
@@ -2801,7 +2801,7 @@
     <string name="cd_dropdown">Menú desplegable</string>
     <string name="cd_library_add">Seleccionar medios</string>
     <string name="cd_camera">Grabar vídeo</string>
-    <string name="cd_app_logo">ClearCut</string>
+    <string name="cd_app_logo">WizardCut</string>
     <string name="cd_video_library">Videoteca</string>
     <string name="cd_movie_placeholder">Miniatura del proyecto</string>
     <string name="cd_duplicate_project">Proyecto duplicado</string>
@@ -2853,7 +2853,7 @@
     <string name="v369_check_last_export">Consultar la última exportación</string>
     <string name="v369_direct_publish_title">Transferencia a plataforma</string>
     <string name="v369_direct_publish_subtitle">Abra la última exportación en otra app con texto sugerido.</string>
-    <string name="v369_direct_publish_handoff_hint">ClearCut comparte el archivo y el texto sugerido. La publicación, visibilidad, programación y controles de divulgación de IA quedan en la app seleccionada.</string>
+    <string name="v369_direct_publish_handoff_hint">WizardCut comparte el archivo y el texto sugerido. La publicación, visibilidad, programación y controles de divulgación de IA quedan en la app seleccionada.</string>
     <string name="v369_publish_title_label">Título</string>
     <string name="v369_open_target_format">Abrir %1$s</string>
     <string name="v369_flash_safety_title">Seguridad contra destellos (WCAG)</string>
@@ -3283,7 +3283,7 @@
     <string name="partial_restore_keep">Conservar lo recuperado</string>
     <string name="partial_restore_use_backup">Probar el guardado anterior</string>
     <string name="vm_recovery_partial_toast">No se pudieron restaurar algunos datos del proyecto (%1$s). El guardado está pausado para no sobrescribir la pérdida; elige qué hacer.</string>
-    <string name="vm_recovery_future_schema_toast">El autoguardado fue creado por una versión más reciente de ClearCut. Se dejó intacto para no perder ediciones.</string>
+    <string name="vm_recovery_future_schema_toast">El autoguardado fue creado por una versión más reciente de WizardCut. Se dejó intacto para no perder ediciones.</string>
     <string name="vm_recovery_corrupt_toast">No se pudo leer el autoguardado. Se dejó intacto para que puedas volver a intentar la recuperación.</string>
     <string name="vm_recovery_not_found_toast">No se encontraron datos de recuperación autoguardados. Se abrirá el proyecto guardado.</string>
     <string name="vm_partial_restore_keep_toast">Se conservará el proyecto recuperado. Se reanudó el guardado; se perdió %1$s.</string>
@@ -3325,7 +3325,7 @@
     <string name="export_failure_stalled">La exportación dejó de avanzar y se canceló.</string>
     <string name="export_failure_stalled_fix">Cierra otras aplicaciones y reinténtalo. Las líneas de tiempo 4K largas pueden agotar el codificador en un dispositivo caliente.</string>
     <string name="export_failure_service_timeout">Android detuvo la exportación porque se ejecutó demasiado tiempo en segundo plano.</string>
-    <string name="export_failure_service_timeout_fix">Mantén ClearCut en primer plano mientras exportas o exporta un intervalo más corto.</string>
+    <string name="export_failure_service_timeout_fix">Mantén WizardCut en primer plano mientras exportas o exporta un intervalo más corto.</string>
     <string name="export_failure_storage">No se pudo escribir la exportación en el almacenamiento.</string>
     <string name="export_failure_storage_fix">Libera espacio o elige otra carpeta de destino e inténtalo de nuevo.</string>
     <string name="export_failure_audio_encode">No se pudo codificar la pista de audio.</string>
@@ -3341,7 +3341,7 @@
     <string name="export_failure_unknown_fix">Inténtalo de nuevo y, si se repite, usa «Copiar informe» en la tarjeta de error de exportación.</string>
     <string name="vm_snapshot_deleted_toast">Se eliminó la instantánea «%1$s». Ahora puedes restaurarla.</string>
     <string name="vm_snapshot_restored_toast">Se restauró la instantánea «%1$s».</string>
-    <string name="vm_snapshot_future_schema_toast">La instantánea fue creada por una versión más reciente de ClearCut y no se aplicó.</string>
+    <string name="vm_snapshot_future_schema_toast">La instantánea fue creada por una versión más reciente de WizardCut y no se aplicó.</string>
     <string name="vm_ai_ledger_cleared_toast">Se borró el registro de uso de IA. Deshaz para recuperarlo.</string>
     <string name="project_template_restore_success">Se restauró «%1$s».</string>
     <string name="project_template_restore_success_generic">Plantilla restaurada.</string>
@@ -3362,5 +3362,5 @@
     <string name="ai_requirement_unmet_dependency">%1$s no viene incluido en esta versión, así que esta herramienta no puede ejecutarse aquí.</string>
     <string name="ai_requirement_unmet_generic">%1$s aún no está listo, así que esta herramienta no puede ejecutarse.</string>
     <string name="ai_requirement_unknown_tool_title">Esta herramienta necesita algo que no está registrado</string>
-    <string name="ai_requirement_unknown_tool_body">ClearCut no tiene una entrada de requisitos para esta herramienta, así que no puede indicar qué falta. Abre Herramientas de IA para ver qué modelos están instalados.</string>
+    <string name="ai_requirement_unknown_tool_body">WizardCut no tiene una entrada de requisitos para esta herramienta, así que no puede indicar qué falta. Abre Herramientas de IA para ver qué modelos están instalados.</string>
 </resources>

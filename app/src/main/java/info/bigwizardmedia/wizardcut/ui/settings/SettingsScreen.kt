@@ -1,0 +1,1985 @@
+package info.bigwizardmedia.wizardcut.ui.settings
+
+import android.app.ActivityManager
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings as AndroidSettings
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
+import info.bigwizardmedia.wizardcut.BuildConfig
+import info.bigwizardmedia.wizardcut.WizardCutApp
+import info.bigwizardmedia.wizardcut.R
+import info.bigwizardmedia.wizardcut.engine.AppearanceMode
+import info.bigwizardmedia.wizardcut.engine.AppSettings
+import info.bigwizardmedia.wizardcut.engine.PrivacyDashboard
+import info.bigwizardmedia.wizardcut.engine.ProjectColorPolicy
+import info.bigwizardmedia.wizardcut.engine.ThumbnailCachePolicy
+import info.bigwizardmedia.wizardcut.engine.segmentation.SegmentationModelState
+import info.bigwizardmedia.wizardcut.engine.whisper.WhisperModelState
+import info.bigwizardmedia.wizardcut.model.*
+import info.bigwizardmedia.wizardcut.ui.ClearCutTestTags
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutAccents
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutChromeIconButton
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutDialogIcon
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutFilterChip
+import info.bigwizardmedia.wizardcut.ui.theme.LocalClearCutColors
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutMetricPill
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutPrimaryButton
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutScreenBackground
+import info.bigwizardmedia.wizardcut.ui.theme.ClearCutSecondaryButton
+import info.bigwizardmedia.wizardcut.ui.theme.Motion
+import info.bigwizardmedia.wizardcut.ui.theme.Radius
+import info.bigwizardmedia.wizardcut.ui.theme.Spacing
+import java.io.File
+
+private enum class SettingsAiModelRemovalTarget {
+    WHISPER,
+    SEGMENTATION
+}
+
+internal data class SettingsEditorModeOption(
+    val value: String,
+    val label: String
+)
+
+internal fun selectedEditorModeOption(
+    editorMode: String,
+    options: List<SettingsEditorModeOption>
+): SettingsEditorModeOption = options.firstOrNull { it.value == editorMode } ?: options.last()
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    onReplayTutorial: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
+    val scrollState = rememberScrollState()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val aiModelStorage by viewModel.aiModelStorage.collectAsStateWithLifecycle()
+    val diagnosticExport by viewModel.diagnosticExport.collectAsStateWithLifecycle()
+    val settingsResetNotice by viewModel.settingsResetNotice.collectAsStateWithLifecycle()
+    val updateCheck by viewModel.updateCheck.collectAsStateWithLifecycle()
+    val networkAvailable by viewModel.networkAvailable.collectAsStateWithLifecycle()
+    val whisperModelState by viewModel.whisperModelState.collectAsStateWithLifecycle()
+    val segmentationModelState by viewModel.segmentationModelState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val editorModeOptions = listOf(
+        SettingsEditorModeOption("Easy", stringResource(R.string.settings_mode_easy)),
+        SettingsEditorModeOption("Pro", stringResource(R.string.settings_mode_pro))
+    )
+    val selectedEditorMode = selectedEditorModeOption(settings.editorMode, editorModeOptions)
+    val thumbnailCacheSizes = remember(context) {
+        ThumbnailCachePolicy.availableSettingsSizes(
+            maxMemoryBytes = Runtime.getRuntime().maxMemory(),
+            isLowRamDevice = context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true,
+        )
+    }
+    val uriHandler = LocalUriHandler.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val canRemoveWhisperModel = whisperModelState == WhisperModelState.READY && aiModelStorage.whisperBytes > 0L
+    val canRemoveSegmentationModel = segmentationModelState == SegmentationModelState.READY && aiModelStorage.segmentationBytes > 0L
+    var pendingAiModelRemoval by remember { mutableStateOf<SettingsAiModelRemovalTarget?>(null) }
+    var showPrivacyDashboard by remember { mutableStateOf(false) }
+    var showOpenSourceLicenses by remember { mutableStateOf(false) }
+    var notificationStatusRefreshKey by remember { mutableIntStateOf(0) }
+
+    val projectStorage by viewModel.projectStorage.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        viewModel.refreshAiModelStorage()
+        viewModel.refreshProjectStorage()
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationStatusRefreshKey += 1
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    ClearCutScreenBackground(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag(ClearCutTestTags.SETTINGS_SCREEN)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            SettingsHero(
+                settings = settings,
+                editorModeLabel = selectedEditorMode.label,
+                onBack = onBack
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+            ) {
+
+        aiModelStorage.feedbackMessage?.let { message ->
+            SettingsFeedbackBanner(
+                message = message,
+                onDismiss = viewModel::dismissAiModelStorageFeedback
+            )
+        }
+        (diagnosticExport.message ?: diagnosticExport.errorMessage)?.let { message ->
+            SettingsFeedbackBanner(
+                message = message,
+                isError = diagnosticExport.errorMessage != null,
+                onDismiss = viewModel::dismissDiagnosticExportMessage
+            )
+        }
+        settingsResetNotice?.let {
+            SettingsFeedbackBanner(
+                message = stringResource(R.string.settings_reset_notice_message),
+                accentOverride = ClearCutAccents.Peach,
+                iconOverride = Icons.Default.Info,
+                onDismiss = viewModel::dismissSettingsResetNotice
+            )
+        }
+        updateCheck.message?.let { message ->
+            SettingsFeedbackBanner(
+                message = message,
+                isError = updateCheck.isError,
+                onDismiss = viewModel::dismissUpdateCheckMessage
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // Export Defaults
+        val projectColorPolicy = ProjectColorPolicy.DEFAULT
+        SettingsSection(
+            title = stringResource(R.string.settings_export_defaults),
+            description = stringResource(R.string.settings_export_defaults_description)
+        ) {
+            SettingsDropdown(
+                icon = Icons.Default.Movie,
+                accent = ClearCutAccents.Rosewater,
+                label = stringResource(R.string.settings_default_resolution),
+                description = stringResource(R.string.settings_default_resolution_description),
+                value = settings.defaultResolution.label,
+                options = Resolution.entries.map { it.label },
+                onSelected = { idx -> viewModel.setResolution(Resolution.entries[idx]) }
+            )
+            SettingsDropdown(
+                icon = Icons.Default.Schedule,
+                accent = ClearCutAccents.Sapphire,
+                label = stringResource(R.string.settings_default_frame_rate),
+                description = stringResource(R.string.settings_default_frame_rate_description),
+                value = "${settings.defaultFrameRate}fps",
+                options = listOf("24fps", "30fps", "60fps"),
+                onSelected = { idx -> viewModel.setFrameRate(listOf(24, 30, 60)[idx]) }
+            )
+            SettingsDropdown(
+                icon = Icons.Default.CropSquare,
+                accent = ClearCutAccents.Mauve,
+                label = stringResource(R.string.settings_default_aspect_ratio),
+                description = stringResource(R.string.settings_default_aspect_ratio_description),
+                value = settings.defaultAspectRatio.label,
+                options = AspectRatio.entries.map { it.label },
+                onSelected = { idx -> viewModel.setAspectRatio(AspectRatio.entries[idx]) }
+            )
+            SettingsDropdown(
+                icon = Icons.Default.Memory,
+                accent = ClearCutAccents.Peach,
+                label = stringResource(R.string.settings_default_codec),
+                description = stringResource(R.string.settings_default_codec_description),
+                value = listOf("H.264", "H.265 (HEVC)", "AV1", "VP9")[
+                    listOf("H264", "HEVC", "AV1", "VP9").indexOf(settings.defaultCodec).coerceAtLeast(0)
+                ],
+                options = listOf("H.264", "H.265 (HEVC)", "AV1", "VP9"),
+                onSelected = { viewModel.setDefaultCodec(listOf("H264", "HEVC", "AV1", "VP9")[it]) }
+            )
+            SettingsTile(
+                icon = Icons.Default.Palette,
+                accent = ClearCutAccents.Teal,
+                label = stringResource(R.string.settings_project_color_policy),
+                description = stringResource(R.string.settings_project_color_policy_description)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    SettingsStatusBadge(
+                        text = projectColorPolicy.workingColorSpace.displayName,
+                        accent = ClearCutAccents.Teal
+                    )
+                    SettingsStatusBadge(
+                        text = projectColorPolicy.displayTransform.displayName,
+                        accent = ClearCutAccents.Sapphire
+                    )
+                }
+            }
+        }
+
+        // Export Notifications
+        SettingsSection(
+            title = stringResource(R.string.settings_export_notifications),
+            description = stringResource(R.string.settings_export_notifications_description)
+        ) {
+            SettingsNotificationPermissionRow(
+                context = context,
+                refreshKey = notificationStatusRefreshKey
+            )
+        }
+
+        // Timeline
+        SettingsSection(
+            title = stringResource(R.string.settings_timeline),
+            description = stringResource(R.string.settings_timeline_description)
+        ) {
+            SettingsToggle(
+                icon = Icons.Default.Save,
+                accent = ClearCutAccents.Mauve,
+                label = stringResource(R.string.settings_auto_save),
+                description = stringResource(R.string.settings_auto_save_description),
+                checked = settings.autoSaveEnabled,
+                onChanged = { viewModel.setAutoSave(it) }
+            )
+            if (settings.autoSaveEnabled) {
+                SettingsSlider(
+                    icon = Icons.Default.Schedule,
+                    accent = ClearCutAccents.Sapphire,
+                    label = stringResource(R.string.settings_auto_save_interval),
+                    description = stringResource(R.string.settings_auto_save_description),
+                    value = settings.autoSaveIntervalSec.toFloat(),
+                    range = 15f..300f,
+                    valueLabel = "${settings.autoSaveIntervalSec}s",
+                    onChanged = { viewModel.setAutoSaveInterval(it.toInt()) }
+                )
+            }
+            SettingsDropdown(
+                icon = Icons.Default.Tune,
+                accent = ClearCutAccents.Sky,
+                label = stringResource(R.string.settings_proxy_resolution),
+                description = stringResource(R.string.settings_proxy_resolution_description),
+                value = settings.proxyResolution.label,
+                options = ProxyResolution.entries.map { it.label },
+                onSelected = { idx -> viewModel.setProxyResolution(ProxyResolution.entries[idx]) }
+            )
+            SettingsSwitch(
+                icon = Icons.Default.Layers,
+                accent = ClearCutAccents.Blue,
+                label = stringResource(R.string.settings_enable_proxy),
+                description = stringResource(R.string.settings_enable_proxy_description),
+                checked = settings.proxyEnabled,
+                onChanged = { viewModel.setProxyEnabled(it) }
+            )
+            SettingsSwitch(
+                icon = Icons.Default.GraphicEq,
+                accent = ClearCutAccents.Green,
+                label = stringResource(R.string.settings_show_waveforms),
+                description = stringResource(R.string.settings_show_waveforms_desc),
+                checked = settings.showWaveforms,
+                onChanged = { viewModel.setShowWaveforms(it) }
+            )
+            SettingsSwitch(
+                icon = Icons.Default.MusicNote,
+                accent = ClearCutAccents.Green,
+                label = stringResource(R.string.settings_snap_beat),
+                description = stringResource(R.string.settings_snap_beat_desc),
+                checked = settings.snapToBeat,
+                onChanged = { viewModel.setSnapToBeat(it) }
+            )
+            SettingsSwitch(
+                icon = Icons.Default.Bookmark,
+                accent = ClearCutAccents.Yellow,
+                label = stringResource(R.string.settings_snap_markers),
+                description = stringResource(R.string.settings_snap_markers_desc),
+                checked = settings.snapToMarker,
+                onChanged = { viewModel.setSnapToMarker(it) }
+            )
+            SettingsChoiceHeader(
+                icon = Icons.Default.ViewStream,
+                accent = ClearCutAccents.Teal,
+                label = stringResource(R.string.settings_default_track_height),
+                description = stringResource(R.string.settings_default_track_height_description)
+            )
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(48, 64, 80, 96).forEach { height ->
+                    ClearCutFilterChip(
+                        selected = settings.defaultTrackHeight == height,
+                        onClick = { viewModel.setDefaultTrackHeight(height) },
+                        text = "${height}dp",
+                        accent = ClearCutAccents.Teal,
+                        icon = if (settings.defaultTrackHeight == height) Icons.Default.Check else null
+                    )
+                }
+            }
+        }
+
+        // AI Models
+        SettingsSection(
+            title = stringResource(R.string.settings_ai_models),
+            description = stringResource(R.string.settings_ai_models_description)
+        ) {
+                SettingsSwitch(
+                    icon = Icons.Default.Wifi,
+                    accent = ClearCutAccents.Sapphire,
+                    label = stringResource(R.string.settings_ai_wifi_only),
+                    description = stringResource(R.string.settings_ai_wifi_only_description),
+                    checked = settings.aiModelWifiOnly,
+                    onChanged = viewModel::setAiModelWifiOnly
+                )
+                SettingsSwitch(
+                    icon = Icons.Default.PrivacyTip,
+                    accent = ClearCutAccents.Green,
+                    label = stringResource(R.string.settings_mediapipe_consent),
+                    description = stringResource(R.string.settings_mediapipe_consent_description),
+                    checked = settings.mediaPipeConsentVersion >=
+                        info.bigwizardmedia.wizardcut.engine.MediaPipeUsageGate.CONSENT_VERSION,
+                    onChanged = viewModel::setMediaPipeConsent
+                )
+                SettingsStorageOverview(
+                    totalBytes = aiModelStorage.totalBytes,
+                    whisperBytes = aiModelStorage.whisperBytes,
+                    segmentationBytes = aiModelStorage.segmentationBytes
+                )
+                SettingsAiModelRow(
+                    icon = Icons.Default.RecordVoiceOver,
+                    accent = ClearCutAccents.Mauve,
+                    label = stringResource(R.string.settings_whisper_model),
+                    description = stringResource(R.string.ai_whisper_description),
+                    stateLabel = whisperModelState.displayLabel(),
+                    storageLabel = modelStorageLabel(aiModelStorage.whisperBytes, stringResource(R.string.settings_whisper_size)),
+                    canRemove = canRemoveWhisperModel,
+                    networkAvailable = networkAvailable,
+                    isError = whisperModelState == WhisperModelState.ERROR,
+                    isBusy = aiModelStorage.isRemovingWhisper || whisperModelState == WhisperModelState.DOWNLOADING,
+                    actionLabel = if (canRemoveWhisperModel) {
+                        stringResource(R.string.remove)
+                    } else {
+                        stringResource(R.string.download)
+                    },
+                    actionIcon = if (canRemoveWhisperModel) {
+                        Icons.Default.Delete
+                    } else {
+                        Icons.Default.Download
+                    },
+                    onAction = if (canRemoveWhisperModel) {
+                        { pendingAiModelRemoval = SettingsAiModelRemovalTarget.WHISPER }
+                    } else {
+                        viewModel::downloadWhisperModel
+                    }
+                )
+                SettingsAiModelRow(
+                    icon = Icons.Default.PersonOff,
+                    accent = ClearCutAccents.Green,
+                    label = stringResource(R.string.settings_segmentation_model),
+                    description = stringResource(R.string.ai_segmentation_description),
+                    stateLabel = segmentationModelState.displayLabel(),
+                    storageLabel = modelStorageLabel(aiModelStorage.segmentationBytes, stringResource(R.string.settings_segmentation_size)),
+                    canRemove = canRemoveSegmentationModel,
+                    networkAvailable = networkAvailable,
+                    isError = segmentationModelState == SegmentationModelState.ERROR,
+                    isBusy = aiModelStorage.isRemovingSegmentation || segmentationModelState == SegmentationModelState.DOWNLOADING,
+                    actionLabel = if (canRemoveSegmentationModel) {
+                        stringResource(R.string.remove)
+                    } else {
+                        stringResource(R.string.download)
+                    },
+                    actionIcon = if (canRemoveSegmentationModel) {
+                        Icons.Default.Delete
+                    } else {
+                        Icons.Default.Download
+                    },
+                    onAction = if (canRemoveSegmentationModel) {
+                        { pendingAiModelRemoval = SettingsAiModelRemovalTarget.SEGMENTATION }
+                    } else {
+                        viewModel::downloadSegmentationModel
+                    }
+                )
+                SettingsTile(
+                    icon = Icons.Default.Mic,
+                    accent = ClearCutAccents.Peach,
+                    label = stringResource(R.string.settings_piper_model),
+                    description = stringResource(R.string.settings_piper_system_voice_description)
+                ) {
+                    SettingsStatusBadge(
+                        text = stringResource(R.string.settings_piper_system_voice_status),
+                        accent = ClearCutAccents.Peach
+                    )
+                }
+            }
+
+        // Project Storage
+        SettingsSection(
+            title = stringResource(R.string.settings_project_storage_title),
+            description = stringResource(
+                R.string.settings_project_storage_media,
+                formatStorageBytes(projectStorage.managedMediaBytes)
+            )
+        ) {
+            SettingsTile(
+                icon = Icons.Default.Storage,
+                accent = ClearCutAccents.Peach,
+                label = stringResource(R.string.settings_project_storage_title),
+                description = stringResource(
+                    R.string.settings_project_storage_proxy,
+                    formatStorageBytes(projectStorage.proxyCacheBytes)
+                )
+            ) {
+                SettingsStatusBadge(
+                    text = formatStorageBytes(projectStorage.totalBytes),
+                    accent = if (projectStorage.totalBytes > 0L) ClearCutAccents.Peach else LocalClearCutColors.current.overlay
+                )
+            }
+            if (projectStorage.proxyCacheBytes > 0L) {
+                SettingsActionRow(
+                    icon = Icons.Default.DeleteSweep,
+                    accent = ClearCutAccents.Peach,
+                    label = stringResource(R.string.settings_clear_proxy_cache),
+                    description = formatStorageBytes(projectStorage.proxyCacheBytes),
+                    actionLabel = if (projectStorage.isClearingProxies) "…" else stringResource(R.string.settings_clear_proxy_cache),
+                    actionIcon = Icons.Default.DeleteSweep,
+                    onClick = viewModel::clearProxyCache
+                )
+            }
+        }
+        projectStorage.feedbackMessage?.let { message ->
+            SettingsFeedbackBanner(message = message, onDismiss = viewModel::dismissProjectStorageFeedback)
+        }
+
+        // Appearance
+        SettingsSection(
+            title = stringResource(R.string.settings_appearance),
+            description = stringResource(R.string.settings_appearance_description)
+        ) {
+            val appearanceModes = AppearanceMode.entries
+            SettingsDropdown(
+                icon = Icons.Default.Contrast,
+                accent = ClearCutAccents.Sky,
+                label = stringResource(R.string.settings_appearance_mode),
+                description = stringResource(R.string.settings_appearance_mode_description),
+                value = settings.appearanceMode.displayLabel(),
+                options = appearanceModes.map { it.displayLabel() },
+                onSelected = { index -> viewModel.setAppearanceMode(appearanceModes[index]) }
+            )
+        }
+
+        // Editor
+        SettingsSection(
+            title = stringResource(R.string.settings_editor),
+            description = stringResource(R.string.settings_editor_description)
+        ) {
+            SettingsDropdown(
+                icon = Icons.Default.Tune,
+                accent = ClearCutAccents.Mauve,
+                label = stringResource(R.string.settings_default_mode),
+                description = stringResource(R.string.settings_default_mode_description),
+                value = selectedEditorMode.label,
+                options = editorModeOptions.map { it.label },
+                onSelected = { viewModel.setEditorMode(editorModeOptions[it].value) }
+            )
+            SettingsToggle(
+                icon = Icons.Default.TouchApp,
+                accent = ClearCutAccents.Sapphire,
+                label = stringResource(R.string.settings_haptic_feedback),
+                description = stringResource(R.string.settings_haptic_desc),
+                checked = settings.hapticEnabled,
+                onChanged = { viewModel.setHapticEnabled(it) }
+            )
+            SettingsChoiceHeader(
+                icon = Icons.Default.PhotoLibrary,
+                accent = ClearCutAccents.Peach,
+                label = stringResource(R.string.settings_thumbnail_cache),
+                description = stringResource(R.string.settings_thumbnail_cache_description)
+            )
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val choices: List<Pair<Int?, String>> = listOf(null to stringResource(R.string.settings_thumbnail_cache_automatic)) +
+                    thumbnailCacheSizes.map { size -> size to "$size MB" }
+                choices.forEach { (size, label) ->
+                    ClearCutFilterChip(
+                        selected = settings.thumbnailCacheSizeMb == size,
+                        onClick = {
+                            if (size == null) viewModel.setThumbnailCacheAutomatic()
+                            else viewModel.setThumbnailCacheSize(size)
+                        },
+                        text = label,
+                        accent = ClearCutAccents.Peach,
+                        icon = if (settings.thumbnailCacheSizeMb == size) Icons.Default.Check else null
+                    )
+                }
+            }
+            SettingsChoiceHeader(
+                icon = Icons.Default.HighQuality,
+                accent = ClearCutAccents.Yellow,
+                label = stringResource(R.string.settings_export_quality),
+                description = stringResource(R.string.settings_export_quality_description)
+            )
+            val qualityLabels = listOf(
+                "LOW" to stringResource(R.string.settings_quality_small),
+                "MEDIUM" to stringResource(R.string.settings_quality_balanced),
+                "HIGH" to stringResource(R.string.settings_quality_best)
+            )
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                qualityLabels.forEach { (key, label) ->
+                    ClearCutFilterChip(
+                        selected = settings.defaultExportQuality == key,
+                        onClick = { viewModel.setDefaultExportQuality(key) },
+                        text = label,
+                        accent = ClearCutAccents.Yellow,
+                        icon = if (settings.defaultExportQuality == key) Icons.Default.Check else null
+                    )
+                }
+            }
+        }
+
+        // Tutorial
+        SettingsSection(
+            title = stringResource(R.string.settings_tutorial),
+            description = stringResource(R.string.settings_tutorial_description)
+        ) {
+            SettingsTile(
+                icon = Icons.Default.School,
+                accent = ClearCutAccents.Sapphire,
+                label = stringResource(R.string.settings_replay_tutorial),
+                description = stringResource(R.string.settings_replay_tutorial_row_description),
+                onClick = onReplayTutorial,
+                modifier = Modifier.testTag(ClearCutTestTags.SETTINGS_REPLAY_TUTORIAL)
+            ) {
+                ClearCutMetricPill(
+                    text = stringResource(R.string.settings_replay_tutorial_action),
+                    accent = ClearCutAccents.Sapphire
+                )
+            }
+        }
+
+        // Diagnostics
+        SettingsSection(
+            title = stringResource(R.string.settings_diagnostics),
+            description = stringResource(R.string.settings_diagnostics_description)
+        ) {
+            SettingsSwitch(
+                icon = Icons.Default.ViewStream,
+                accent = ClearCutAccents.Teal,
+                label = stringResource(R.string.settings_diagnostic_timeline_shape),
+                description = stringResource(R.string.settings_diagnostic_timeline_shape_description),
+                checked = settings.includeDiagnosticTimelineShape,
+                onChanged = viewModel::setIncludeDiagnosticTimelineShape
+            )
+            SettingsSwitch(
+                icon = Icons.Default.BugReport,
+                accent = ClearCutAccents.Peach,
+                label = stringResource(R.string.settings_diagnostic_raw_error_text),
+                description = stringResource(R.string.settings_diagnostic_raw_error_text_description),
+                checked = settings.includeDiagnosticRawErrorText,
+                onChanged = viewModel::setIncludeDiagnosticRawErrorText
+            )
+            SettingsDiagnosticExportRow(
+                state = diagnosticExport,
+                onExport = viewModel::exportDiagnosticBundle,
+                onShare = { bundle ->
+                    shareDiagnosticBundle(
+                        context = context,
+                        bundle = bundle,
+                        onFailure = viewModel::reportDiagnosticShareFailure
+                    )
+                }
+            )
+        }
+
+        // Privacy (R5.5c UI) — opens the PrivacyDashboardPanel in a dialog.
+        // Engine helpers (groupForDisplay / controlSummary) are pure so the
+        // panel re-renders without any view-model state today.
+        SettingsSection(
+            title = stringResource(R.string.settings_privacy_section_title),
+            description = stringResource(R.string.settings_privacy_section_description)
+        ) {
+            SettingsActionRow(
+                icon = Icons.Default.Shield,
+                accent = ClearCutAccents.Mauve,
+                label = stringResource(R.string.settings_privacy_open_label),
+                description = stringResource(R.string.settings_privacy_open_description),
+                actionLabel = stringResource(R.string.settings_privacy_open_action),
+                onClick = { showPrivacyDashboard = true },
+                modifier = Modifier.testTag(ClearCutTestTags.SETTINGS_PRIVACY_OPEN)
+            )
+        }
+
+        // Third-party notices
+        SettingsSection(
+            title = stringResource(R.string.settings_open_source_licenses_section_title),
+            description = stringResource(R.string.settings_open_source_licenses_section_description)
+        ) {
+            SettingsActionRow(
+                icon = Icons.Default.Info,
+                accent = ClearCutAccents.Teal,
+                label = stringResource(R.string.settings_open_source_licenses),
+                description = stringResource(R.string.settings_open_source_licenses_description),
+                actionLabel = stringResource(R.string.settings_open_source_licenses_action),
+                onClick = { showOpenSourceLicenses = true },
+                modifier = Modifier.testTag(ClearCutTestTags.SETTINGS_LICENSES_OPEN)
+            )
+        }
+
+        // Updates (sideload / GitHub-release installs only). Compiled out when
+        // the build opts out via BuildConfig.UPDATE_CHECK_AVAILABLE.
+        if (BuildConfig.UPDATE_CHECK_AVAILABLE) {
+            SettingsSection(
+                title = stringResource(R.string.settings_updates_section_title),
+                description = stringResource(R.string.settings_updates_section_description)
+            ) {
+                SettingsSwitch(
+                    icon = Icons.Default.SystemUpdate,
+                    accent = ClearCutAccents.Sky,
+                    label = stringResource(R.string.settings_update_check_label),
+                    description = stringResource(R.string.settings_update_check_description),
+                    checked = settings.updateCheckEnabled,
+                    onChanged = viewModel::setUpdateCheckEnabled
+                )
+                if (settings.updateCheckEnabled) {
+                    if (updateCheck.updateAvailable) {
+                        SettingsActionRow(
+                            icon = Icons.Default.NewReleases,
+                            accent = ClearCutAccents.Green,
+                            label = stringResource(
+                                R.string.settings_update_available_label,
+                                updateCheck.latestVersion.orEmpty()
+                            ),
+                            description = stringResource(
+                                if (networkAvailable) {
+                                    R.string.settings_update_available_description
+                                } else {
+                                    R.string.settings_update_offline
+                                }
+                            ),
+                            actionLabel = stringResource(R.string.settings_update_view_action),
+                            actionIcon = Icons.AutoMirrored.Filled.OpenInNew,
+                            onClick = { updateCheck.releaseUrl?.let { uriHandler.openUri(it) } },
+                            enabled = networkAvailable,
+                        )
+                    } else {
+                        SettingsActionRow(
+                            icon = Icons.Default.SystemUpdate,
+                            accent = ClearCutAccents.Sky,
+                            label = stringResource(R.string.settings_update_check_now_label),
+                            description = stringResource(R.string.settings_update_check_now_description),
+                            actionLabel = if (updateCheck.isChecking) {
+                                stringResource(R.string.settings_update_checking_action)
+                            } else {
+                                stringResource(R.string.settings_update_check_now_action)
+                            },
+                            actionIcon = Icons.Default.Refresh,
+                            onClick = { if (!updateCheck.isChecking) viewModel.checkForUpdate() },
+                            enabled = networkAvailable && !updateCheck.isChecking,
+                        )
+                    }
+                }
+            }
+        }
+
+        // About
+        SettingsSection(
+            title = stringResource(R.string.settings_about),
+            description = stringResource(R.string.settings_about_description)
+        ) {
+            SettingsInfo(Icons.Default.Info, stringResource(R.string.settings_version), WizardCutApp.VERSION, ClearCutAccents.Sapphire)
+            SettingsInfo(Icons.Default.Movie, stringResource(R.string.settings_engine), stringResource(R.string.settings_engine_value), ClearCutAccents.Peach)
+            SettingsInfo(Icons.Default.AutoAwesome, stringResource(R.string.settings_ai_models), stringResource(R.string.settings_ai_models_value), ClearCutAccents.Mauve)
+        }
+
+            Spacer(Modifier.height(Spacing.xxl))
+            }
+        }
+
+        pendingAiModelRemoval?.let { target ->
+            SettingsAiModelRemovalConfirmDialog(
+                target = target,
+                storageLabel = when (target) {
+                    SettingsAiModelRemovalTarget.WHISPER -> formatStorageBytes(aiModelStorage.whisperBytes)
+                    SettingsAiModelRemovalTarget.SEGMENTATION -> formatStorageBytes(aiModelStorage.segmentationBytes)
+                },
+                onDismissRequest = { pendingAiModelRemoval = null },
+                onConfirm = {
+                    when (target) {
+                        SettingsAiModelRemovalTarget.WHISPER -> viewModel.removeWhisperModel()
+                        SettingsAiModelRemovalTarget.SEGMENTATION -> viewModel.removeSegmentationModel()
+                    }
+                    pendingAiModelRemoval = null
+                }
+            )
+        }
+
+        if (showPrivacyDashboard) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showPrivacyDashboard = false }
+            ) {
+                androidx.compose.material3.Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xxl),
+                    color = LocalClearCutColors.current.panelHighest,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 480.dp, max = 640.dp)
+                        .testTag(ClearCutTestTags.SETTINGS_PRIVACY_DASHBOARD)
+                ) {
+                    Column {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            val privacyActionLabels = privacyDashboardActionLabels()
+                            PrivacyDashboardPanel(
+                                actionsFor = { entry ->
+                                    privacyDashboardActions(
+                                        entry = entry,
+                                        canRemoveWhisperModel = canRemoveWhisperModel,
+                                        canRemoveSegmentationModel = canRemoveSegmentationModel,
+                                        mediaPipeConsentGranted = settings.mediaPipeConsentVersion >=
+                                            info.bigwizardmedia.wizardcut.engine.MediaPipeUsageGate.CONSENT_VERSION,
+                                        updateCheckEnabled = settings.updateCheckEnabled,
+                                        onExportDiagnostics = {
+                                            showPrivacyDashboard = false
+                                            viewModel.exportDiagnosticBundle()
+                                        },
+                                        onRemoveWhisperModel = {
+                                            showPrivacyDashboard = false
+                                            pendingAiModelRemoval = SettingsAiModelRemovalTarget.WHISPER
+                                        },
+                                        onRemoveSegmentationModel = {
+                                            showPrivacyDashboard = false
+                                            pendingAiModelRemoval = SettingsAiModelRemovalTarget.SEGMENTATION
+                                        },
+                                        onRevokeMediaPipeConsent = { viewModel.setMediaPipeConsent(false) },
+                                        onDisableUpdateCheck = { viewModel.setUpdateCheckEnabled(false) },
+                                        labels = privacyActionLabels,
+                                    )
+                                }
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            ClearCutSecondaryButton(
+                                text = stringResource(R.string.settings_privacy_close),
+                                onClick = { showPrivacyDashboard = false },
+                                modifier = Modifier.testTag(ClearCutTestTags.SETTINGS_PRIVACY_CLOSE)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showOpenSourceLicenses) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showOpenSourceLicenses = false }
+            ) {
+                androidx.compose.material3.Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.xxl),
+                    color = LocalClearCutColors.current.panelHighest,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(560.dp)
+                        .testTag(ClearCutTestTags.SETTINGS_LICENSES_DIALOG)
+                ) {
+                    Column {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            OpenSourceLicensesPanel()
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            ClearCutSecondaryButton(
+                                text = stringResource(R.string.settings_open_source_licenses_close),
+                                onClick = { showOpenSourceLicenses = false },
+                                modifier = Modifier.testTag(ClearCutTestTags.SETTINGS_LICENSES_CLOSE)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsAiModelRemovalConfirmDialog(
+    target: SettingsAiModelRemovalTarget,
+    storageLabel: String,
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val title = when (target) {
+        SettingsAiModelRemovalTarget.WHISPER -> stringResource(R.string.ai_remove_whisper_title)
+        SettingsAiModelRemovalTarget.SEGMENTATION -> stringResource(R.string.ai_remove_segmentation_title)
+    }
+    val body = when (target) {
+        SettingsAiModelRemovalTarget.WHISPER -> stringResource(R.string.settings_remove_whisper_model_message, storageLabel)
+        SettingsAiModelRemovalTarget.SEGMENTATION -> stringResource(R.string.settings_remove_segmentation_model_message, storageLabel)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        icon = {
+            ClearCutDialogIcon(
+                icon = Icons.Default.Delete,
+                accent = ClearCutAccents.Red
+            )
+        },
+        title = {
+            Text(
+                text = title,
+                color = LocalClearCutColors.current.text,
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Text(
+                text = body,
+                color = LocalClearCutColors.current.subtext,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            ClearCutSecondaryButton(
+                text = stringResource(R.string.ai_model_remove_confirm),
+                onClick = onConfirm,
+                icon = Icons.Default.Delete,
+                contentColor = ClearCutAccents.Red
+            )
+        },
+        dismissButton = {
+            ClearCutSecondaryButton(
+                text = stringResource(R.string.cancel),
+                onClick = onDismissRequest
+            )
+        },
+        containerColor = LocalClearCutColors.current.panelHighest,
+        titleContentColor = LocalClearCutColors.current.text,
+        textContentColor = LocalClearCutColors.current.subtext,
+        shape = RoundedCornerShape(Radius.xxl)
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SettingsHero(
+    settings: AppSettings,
+    editorModeLabel: String,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ClearCutChromeIconButton(
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.back),
+                onClick = onBack,
+                tint = LocalClearCutColors.current.text,
+                containerColor = Color.Transparent,
+                borderColor = Color.Transparent,
+                modifier = Modifier.testTag(ClearCutTestTags.SETTINGS_BACK)
+            )
+            Spacer(Modifier.width(Spacing.sm))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.settings_title),
+                    color = LocalClearCutColors.current.text,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.settings_subtitle),
+                    color = LocalClearCutColors.current.subtext,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(top = Spacing.lg),
+            color = LocalClearCutColors.current.cardStroke
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SettingsOverviewStat(
+                icon = Icons.Default.Tune,
+                label = stringResource(R.string.settings_editor),
+                value = editorModeLabel,
+                accent = ClearCutAccents.Mauve,
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(56.dp)
+                    .background(LocalClearCutColors.current.cardStroke)
+            )
+            SettingsOverviewStat(
+                icon = Icons.Default.Schedule,
+                label = stringResource(R.string.settings_auto_save),
+                value = if (settings.autoSaveEnabled) "${settings.autoSaveIntervalSec}s" else stringResource(R.string.settings_off),
+                accent = ClearCutAccents.Green,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsOverviewStat(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    accent: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .semantics {
+            contentDescription = "$label. $value"
+        }
+            .padding(horizontal = Spacing.md, vertical = Spacing.lg),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                color = accent,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = value,
+                color = LocalClearCutColors.current.text,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsFeedbackBanner(
+    message: String,
+    isError: Boolean = false,
+    accentOverride: androidx.compose.ui.graphics.Color? = null,
+    iconOverride: ImageVector? = null,
+    onDismiss: (() -> Unit)? = null
+) {
+    val colors = LocalClearCutColors.current
+    val accent = accentOverride ?: if (isError) ClearCutAccents.Red else ClearCutAccents.Green
+    val icon = iconOverride ?: if (isError) Icons.Default.Error else Icons.Default.CheckCircle
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.lg, vertical = Spacing.xs)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        color = colors.panelHighest,
+        shape = RoundedCornerShape(Radius.md),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.28f))
+    ) {
+        Row(
+            modifier = Modifier
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            accent.copy(alpha = if (colors.highContrast) 0.18f else 0.11f),
+                            colors.panelHighest
+                        )
+                    )
+                )
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SettingsTileIcon(icon = icon, accent = accent)
+            Text(
+                text = message,
+                color = LocalClearCutColors.current.text,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            onDismiss?.let { dismiss ->
+                ClearCutChromeIconButton(
+                    icon = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.close),
+                    onClick = dismiss
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsDiagnosticExportRow(
+    state: DiagnosticExportUiState,
+    onExport: () -> Unit,
+    onShare: (DiagnosticExportBundleUi) -> Unit
+) {
+    SettingsTile(
+        icon = Icons.Default.ReportProblem,
+        accent = ClearCutAccents.Sapphire,
+        label = stringResource(R.string.settings_diagnostic_export),
+        description = stringResource(R.string.settings_diagnostic_export_description)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+        ) {
+            when {
+                state.isExporting -> {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = ClearCutAccents.Sapphire,
+                            strokeWidth = 2.dp
+                        )
+                        SettingsStatusBadge(
+                            text = stringResource(R.string.settings_diagnostic_exporting),
+                            accent = ClearCutAccents.Sapphire
+                        )
+                    }
+                }
+                state.bundle != null -> {
+                    SettingsStatusBadge(
+                        text = stringResource(R.string.settings_diagnostic_saved),
+                        accent = ClearCutAccents.Green
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.settings_diagnostic_file_format,
+                            state.bundle.fileName,
+                            formatStorageBytes(state.bundle.sizeBytes)
+                        ),
+                        color = LocalClearCutColors.current.subtext,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.widthIn(max = 190.dp),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                    ) {
+                        ClearCutSecondaryButton(
+                            text = stringResource(R.string.settings_diagnostic_share),
+                            onClick = { onShare(state.bundle) },
+                            icon = Icons.Default.Share,
+                            contentColor = ClearCutAccents.Green
+                        )
+                        ClearCutSecondaryButton(
+                            text = stringResource(R.string.settings_diagnostic_rebuild),
+                            onClick = onExport,
+                            icon = Icons.Default.Refresh,
+                            enabled = !state.isExporting,
+                            contentColor = ClearCutAccents.Sapphire
+                        )
+                    }
+                }
+                else -> {
+                    ClearCutSecondaryButton(
+                        text = stringResource(R.string.settings_diagnostic_export_action),
+                        onClick = onExport,
+                        icon = Icons.Default.Save,
+                        contentColor = ClearCutAccents.Sapphire
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsNotificationPermissionRow(
+    context: Context,
+    refreshKey: Int
+) {
+    val runtimePermissionRequired = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val runtimePermissionGranted = remember(context, refreshKey) {
+        !runtimePermissionRequired ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+    }
+    val appNotificationsEnabled = remember(context, refreshKey) {
+        NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+    val status = when {
+        !runtimePermissionRequired -> NotificationPermissionSettingsStatus.NotRequired
+        runtimePermissionGranted && appNotificationsEnabled -> NotificationPermissionSettingsStatus.Enabled
+        else -> NotificationPermissionSettingsStatus.Off
+    }
+    val badgeText = stringResource(status.badgeResId)
+    val description = stringResource(status.descriptionResId)
+
+    SettingsTile(
+        icon = if (status == NotificationPermissionSettingsStatus.Off) {
+            Icons.Default.NotificationsOff
+        } else {
+            Icons.Default.NotificationsActive
+        },
+        accent = status.accent,
+        label = stringResource(R.string.settings_export_notifications_row),
+        description = description,
+        onClick = { openAppNotificationSettings(context) },
+        semanticState = badgeText
+    ) {
+        SettingsStatusBadge(
+            text = badgeText,
+            accent = status.accent
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+            contentDescription = stringResource(R.string.settings_export_notifications_open),
+            tint = LocalClearCutColors.current.subtext,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+private enum class NotificationPermissionSettingsStatus(
+    val badgeResId: Int,
+    val descriptionResId: Int,
+    val accent: androidx.compose.ui.graphics.Color
+) {
+    Enabled(
+        badgeResId = R.string.settings_export_notifications_enabled,
+        descriptionResId = R.string.settings_export_notifications_enabled_description,
+        accent = ClearCutAccents.Green
+    ),
+    Off(
+        badgeResId = R.string.settings_export_notifications_off,
+        descriptionResId = R.string.settings_export_notifications_off_description,
+        accent = ClearCutAccents.Yellow
+    ),
+    NotRequired(
+        badgeResId = R.string.settings_export_notifications_not_required,
+        descriptionResId = R.string.settings_export_notifications_not_required_description,
+        accent = ClearCutAccents.Sapphire
+    )
+}
+
+private fun openAppNotificationSettings(context: Context) {
+    val notificationIntent = Intent(AndroidSettings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(AndroidSettings.EXTRA_APP_PACKAGE, context.packageName)
+    runCatching {
+        context.startActivity(notificationIntent)
+    }.onFailure {
+        val fallbackIntent = Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.parse("package:${context.packageName}"))
+        context.startActivity(fallbackIntent)
+    }
+}
+
+@Composable
+private fun SettingsStorageOverview(
+    totalBytes: Long,
+    whisperBytes: Long,
+    segmentationBytes: Long
+) {
+    SettingsTile(
+        icon = Icons.Default.Storage,
+        accent = ClearCutAccents.Rosewater,
+        label = stringResource(R.string.settings_ai_storage_title),
+        description = stringResource(
+            R.string.settings_ai_storage_description,
+            formatStorageBytes(whisperBytes),
+            formatStorageBytes(segmentationBytes)
+        )
+    ) {
+        SettingsStatusBadge(
+            text = formatStorageBytes(totalBytes),
+            accent = if (totalBytes > 0L) ClearCutAccents.Rosewater else LocalClearCutColors.current.overlay
+        )
+    }
+}
+
+private fun shareDiagnosticBundle(
+    context: Context,
+    bundle: DiagnosticExportBundleUi,
+    onFailure: () -> Unit
+) {
+    val file = File(bundle.path)
+    if (!file.isFile) {
+        onFailure()
+        return
+    }
+    runCatching {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/zip"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(
+            Intent.createChooser(
+                shareIntent,
+                context.getString(R.string.settings_diagnostic_share_chooser)
+            )
+        )
+    }.onFailure { onFailure() }
+}
+
+@Composable
+private fun SettingsAiModelRow(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String,
+    stateLabel: String,
+    storageLabel: String,
+    canRemove: Boolean,
+    networkAvailable: Boolean,
+    isError: Boolean,
+    isBusy: Boolean,
+    actionLabel: String,
+    actionIcon: ImageVector,
+    onAction: () -> Unit
+) {
+    val effectiveDescription = if (!canRemove && !networkAvailable) {
+        "$description ${stringResource(R.string.settings_model_offline_description)}"
+    } else {
+        description
+    }
+    SettingsTile(
+        icon = icon,
+        accent = accent,
+        label = label,
+        description = stringResource(
+            R.string.settings_model_description_with_size,
+            effectiveDescription,
+            storageLabel,
+        )
+    ) {
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isBusy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = accent,
+                        strokeWidth = 2.dp
+                    )
+                }
+                SettingsStatusBadge(
+                    text = stateLabel,
+                    accent = when {
+                        canRemove -> ClearCutAccents.Green
+                        isError -> ClearCutAccents.Red
+                        isBusy -> ClearCutAccents.Sapphire
+                        else -> LocalClearCutColors.current.overlayStrong
+                    }
+                )
+            }
+            ClearCutSecondaryButton(
+                text = actionLabel,
+                onClick = onAction,
+                enabled = !isBusy && (canRemove || networkAvailable),
+                contentColor = if (canRemove) ClearCutAccents.Red else accent,
+                icon = actionIcon
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsStatusBadge(
+    text: String,
+    accent: androidx.compose.ui.graphics.Color
+) {
+    Surface(
+        color = accent.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(Radius.sm),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.22f))
+    ) {
+        Text(
+            text = text,
+            color = accent,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun WhisperModelState.displayLabel(): String = when (this) {
+    WhisperModelState.READY -> stringResource(R.string.settings_model_installed)
+    WhisperModelState.DOWNLOADING -> stringResource(R.string.settings_model_downloading)
+    WhisperModelState.ERROR -> stringResource(R.string.settings_model_error)
+    WhisperModelState.NOT_DOWNLOADED -> stringResource(R.string.settings_model_not_installed)
+}
+
+@Composable
+private fun SegmentationModelState.displayLabel(): String = when (this) {
+    SegmentationModelState.READY -> stringResource(R.string.settings_model_installed)
+    SegmentationModelState.DOWNLOADING -> stringResource(R.string.settings_model_downloading)
+    SegmentationModelState.ERROR -> stringResource(R.string.settings_model_error)
+    SegmentationModelState.NOT_DOWNLOADED -> stringResource(R.string.settings_model_not_installed)
+}
+
+@Composable
+private fun AppearanceMode.displayLabel(): String = when (this) {
+    AppearanceMode.DARK -> stringResource(R.string.settings_appearance_dark)
+    AppearanceMode.HIGH_CONTRAST_DARK -> stringResource(R.string.settings_appearance_high_contrast)
+}
+
+@Composable
+private fun modelStorageLabel(bytes: Long, downloadSize: String): String {
+    return if (bytes > 0L) {
+        stringResource(R.string.settings_installed_size_format, formatStorageBytes(bytes))
+    } else {
+        stringResource(R.string.settings_download_size_format, downloadSize)
+    }
+}
+
+@Composable
+private fun SettingsSection(
+    title: String,
+    description: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md)) {
+        Text(
+            text = title.uppercase(),
+            color = LocalClearCutColors.current.subtext,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(bottom = Spacing.xs)
+        )
+        Column(
+            modifier = Modifier.animateContentSize(),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun SettingsDropdown(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String? = null,
+    value: String,
+    options: List<String>,
+    onSelected: (Int) -> Unit
+) {
+    val colors = LocalClearCutColors.current
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        SettingsTile(
+            icon = icon,
+            accent = accent,
+            label = label,
+            description = description,
+            onClick = { expanded = true }
+        ) {
+            Text(value, color = colors.subtext, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                Icons.Default.ArrowDropDown,
+                stringResource(R.string.cd_dropdown),
+                tint = colors.subtext,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = colors.panelHighest
+        ) {
+            options.forEachIndexed { idx, opt ->
+                DropdownMenuItem(
+                    text = { Text(opt, style = MaterialTheme.typography.bodyMedium) },
+                    trailingIcon = if (opt == value) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = ClearCutAccents.Rosewater,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    onClick = { onSelected(idx); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsToggle(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String,
+    checked: Boolean,
+    onChanged: (Boolean) -> Unit
+) {
+    SettingsSwitchTile(icon, accent, label, description, checked, onChanged)
+}
+
+@Composable
+private fun SettingsSwitch(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String,
+    checked: Boolean,
+    onChanged: (Boolean) -> Unit
+) {
+    SettingsSwitchTile(icon, accent, label, description, checked, onChanged)
+}
+
+@Composable
+private fun SettingsSlider(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String? = null,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    valueLabel: String,
+    onChanged: (Float) -> Unit
+) {
+    // Hold a local in-flight slider value so the thumb tracks the drag smoothly without
+    // calling the ViewModel (and writing to DataStore) on every tick of the gesture.
+    // Only commit the final value on drag end. `value` (the canonical settings value)
+    // is the key on remember so external changes still propagate.
+    var localValue by remember(value) { mutableStateOf(value) }
+    Column {
+        Column(modifier = Modifier.padding(horizontal = Spacing.xs, vertical = Spacing.md)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                ) {
+                    SettingsTileIcon(icon = icon, accent = accent)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            label,
+                            color = LocalClearCutColors.current.text,
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        description?.let {
+                            Text(
+                                it,
+                                color = LocalClearCutColors.current.subtext,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    valueLabel,
+                    color = accent,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Slider(
+                value = localValue,
+                onValueChange = { localValue = it },
+                onValueChangeFinished = { onChanged(localValue) },
+                valueRange = range,
+                colors = SliderDefaults.colors(
+                    thumbColor = accent,
+                    activeTrackColor = accent,
+                    inactiveTrackColor = LocalClearCutColors.current.surface
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsInfo(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    accent: androidx.compose.ui.graphics.Color
+) {
+    SettingsTile(
+        icon = icon,
+        accent = accent,
+        label = label
+    ) {
+        Text(
+            text = value,
+            color = LocalClearCutColors.current.subtext,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SettingsActionRow(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String,
+    actionLabel: String,
+    actionIcon: ImageVector = Icons.Default.ChevronRight,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    SettingsTile(
+        icon = icon,
+        accent = accent,
+        label = label,
+        description = description,
+        onClick = onClick.takeIf { enabled },
+        modifier = modifier
+    ) {
+        Text(
+            text = actionLabel,
+            color = if (enabled) accent else LocalClearCutColors.current.disabledText,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Icon(
+            imageVector = actionIcon,
+            contentDescription = null,
+            tint = if (enabled) accent else LocalClearCutColors.current.disabledText,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun SettingsChoiceHeader(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String
+) {
+    Row(
+        modifier = Modifier.padding(top = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalAlignment = Alignment.Top
+    ) {
+        SettingsTileIcon(icon = icon, accent = accent)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                label,
+                color = LocalClearCutColors.current.text,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                description,
+                color = LocalClearCutColors.current.subtext,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSwitchTile(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String,
+    checked: Boolean,
+    onChanged: (Boolean) -> Unit
+) {
+    val switchState = stringResource(if (checked) R.string.settings_on else R.string.settings_off)
+
+    SettingsTile(
+        icon = icon,
+        accent = accent,
+        label = label,
+        description = description,
+        onClick = { onChanged(!checked) },
+        role = Role.Switch,
+        semanticState = switchState
+    ) {
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            modifier = Modifier.clearAndSetSemantics { },
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = accent.copy(alpha = 0.8f),
+                checkedThumbColor = LocalClearCutColors.current.onAccent,
+                uncheckedTrackColor = LocalClearCutColors.current.surface,
+                uncheckedThumbColor = LocalClearCutColors.current.subtext
+            )
+        )
+    }
+}
+
+@Composable
+private fun SettingsTile(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color,
+    label: String,
+    description: String? = null,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    role: Role = Role.Button,
+    semanticState: String? = null,
+    trailing: @Composable RowScope.() -> Unit
+) {
+    val colors = LocalClearCutColors.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val tileContainer by animateColorAsState(
+        targetValue = if (onClick != null && pressed) {
+            colors.panelHighest.copy(alpha = if (colors.highContrast) 1f else 0.88f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = Motion.DurationFast, easing = Motion.StandardEasing),
+        label = "settingsTileContainer"
+    )
+    val tileScale by animateFloatAsState(
+        targetValue = if (onClick != null && pressed) 0.992f else 1f,
+        animationSpec = Motion.fast(),
+        label = "settingsTileScale"
+    )
+    Surface(
+        modifier = Modifier.graphicsLayer {
+            scaleX = tileScale
+            scaleY = tileScale
+        },
+        color = tileContainer,
+        shape = RoundedCornerShape(0.dp)
+    ) {
+        Column {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(modifier)
+                    .defaultMinSize(minHeight = 60.dp)
+                    .then(
+                        if (onClick != null) {
+                            Modifier.clickable(
+                                interactionSource = interactionSource,
+                                indication = LocalIndication.current,
+                                role = role,
+                                onClick = onClick
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .then(
+                        if (semanticState != null) {
+                            Modifier.semantics { stateDescription = semanticState }
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(horizontal = Spacing.xs, vertical = 10.dp),
+            ) {
+                val compactTextLayout = maxWidth < 400.dp && description != null
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SettingsTileIcon(icon = icon, accent = accent)
+                    if (compactTextLayout) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = colors.text,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    content = trailing,
+                                )
+                            }
+                            Text(
+                                text = requireNotNull(description),
+                                color = colors.subtext,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    } else {
+                        SettingsTileText(
+                            label = label,
+                            description = description,
+                            modifier = Modifier.weight(1f),
+                            colors = colors,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            content = trailing,
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(
+                color = colors.cardStroke.copy(alpha = if (colors.highContrast) 1f else 0.78f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsTileText(
+    label: String,
+    description: String?,
+    modifier: Modifier,
+    colors: info.bigwizardmedia.wizardcut.ui.theme.ClearCutSemanticColors
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            label,
+            color = colors.text,
+            style = MaterialTheme.typography.titleSmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        description?.let {
+            Text(
+                it,
+                color = colors.subtext,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsTileIcon(
+    icon: ImageVector,
+    accent: androidx.compose.ui.graphics.Color
+) {
+    Box(
+        modifier = Modifier.size(36.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+/** Labels for the privacy-dashboard row actions, resolved once per composition. */
+@Composable
+private fun privacyDashboardActionLabels(): PrivacyDashboardActionLabels =
+    PrivacyDashboardActionLabels(
+        exportDiagnostics = stringResource(R.string.privacy_dashboard_action_export_diagnostics),
+        removeWhisperModel = stringResource(R.string.privacy_dashboard_action_remove_whisper),
+        removeSegmentationModel = stringResource(R.string.privacy_dashboard_action_remove_segmentation),
+        turnOff = stringResource(R.string.privacy_dashboard_action_turn_off),
+    )
+
+private data class PrivacyDashboardActionLabels(
+    val exportDiagnostics: String,
+    val removeWhisperModel: String,
+    val removeSegmentationModel: String,
+    val turnOff: String,
+)
+
+/**
+ * The actions the Settings privacy dashboard can genuinely run. A category
+ * absent from this mapping renders no button at all — the row states where its
+ * control lives instead of offering one that does nothing.
+ */
+private fun privacyDashboardActions(
+    entry: PrivacyDashboard.DashboardEntry,
+    canRemoveWhisperModel: Boolean,
+    canRemoveSegmentationModel: Boolean,
+    mediaPipeConsentGranted: Boolean,
+    updateCheckEnabled: Boolean,
+    onExportDiagnostics: () -> Unit,
+    onRemoveWhisperModel: () -> Unit,
+    onRemoveSegmentationModel: () -> Unit,
+    onRevokeMediaPipeConsent: () -> Unit,
+    onDisableUpdateCheck: () -> Unit,
+    labels: PrivacyDashboardActionLabels,
+): List<PrivacyDashboardAction> = when (entry.category) {
+    PrivacyDashboard.Category.SETTINGS_RESET_REPORTS,
+    PrivacyDashboard.Category.DIAGNOSTIC_LOGS,
+    PrivacyDashboard.Category.CRASH_RECORDS,
+    PrivacyDashboard.Category.PROCESS_EXIT_HISTORY ->
+        listOf(PrivacyDashboardAction(labels.exportDiagnostics, onExportDiagnostics))
+
+    PrivacyDashboard.Category.ML_MODELS -> buildList {
+        if (canRemoveWhisperModel) {
+            add(PrivacyDashboardAction(labels.removeWhisperModel, onRemoveWhisperModel))
+        }
+        if (canRemoveSegmentationModel) {
+            add(PrivacyDashboardAction(labels.removeSegmentationModel, onRemoveSegmentationModel))
+        }
+    }
+
+    PrivacyDashboard.Category.MEDIAPIPE_METRICS ->
+        if (mediaPipeConsentGranted) {
+            listOf(PrivacyDashboardAction(labels.turnOff, onRevokeMediaPipeConsent))
+        } else {
+            emptyList()
+        }
+
+    PrivacyDashboard.Category.UPDATE_CHECK ->
+        if (updateCheckEnabled) {
+            listOf(PrivacyDashboardAction(labels.turnOff, onDisableUpdateCheck))
+        } else {
+            emptyList()
+        }
+
+    else -> emptyList()
+}

@@ -1,0 +1,203 @@
+package info.bigwizardmedia.wizardcut.engine
+
+import android.net.FakeUri
+import info.bigwizardmedia.wizardcut.model.AudioEffect
+import info.bigwizardmedia.wizardcut.model.AudioEffectType
+import info.bigwizardmedia.wizardcut.model.Clip
+import info.bigwizardmedia.wizardcut.model.Effect
+import info.bigwizardmedia.wizardcut.model.EffectType
+import info.bigwizardmedia.wizardcut.model.TextOverlay
+import info.bigwizardmedia.wizardcut.model.Track
+import info.bigwizardmedia.wizardcut.model.TrackType
+import info.bigwizardmedia.wizardcut.model.TrackedObject
+import info.bigwizardmedia.wizardcut.model.Transition
+import info.bigwizardmedia.wizardcut.model.TransitionType
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class TemplateCompatibilityEngineTest {
+
+    @Test
+    fun createMetadata_collectsFeaturesAndSlots() {
+        val state = AutoSaveState(
+            projectId = "template",
+            tracks = listOf(
+                Track(
+                    type = TrackType.VIDEO,
+                    index = 0,
+                    clips = listOf(
+                        Clip(
+                            id = "clip",
+                            sourceUri = FakeUri,
+                            sourceDurationMs = 2_000L,
+                            timelineStartMs = 0L,
+                            effects = listOf(Effect(type = EffectType.TRACKED_MOSAIC)),
+                            headTransition = Transition(type = TransitionType.DISSOLVE),
+                            audioEffects = listOf(AudioEffect(type = AudioEffectType.COMPRESSOR))
+                        )
+                    )
+                )
+            ),
+            textOverlays = listOf(TextOverlay(text = "Title")),
+            trackedObjects = listOf(
+                TrackedObject(
+                    id = "subject",
+                    label = "Subject",
+                    sourceClipId = "clip"
+                )
+            )
+        )
+
+        val metadata = TemplateCompatibilityEngine.createMetadata(
+            state = state,
+            minVersionCode = 132,
+            minVersionName = "3.71.0"
+        )
+        val featureKeys = metadata.features.map { it.type to it.key }.toSet()
+
+        assertEquals(132, metadata.minVersionCode)
+        assertEquals("3.71.0", metadata.minVersionName)
+        assertEquals(2, metadata.slotCount)
+        assertEquals(1, metadata.mediaSlotCount)
+        assertEquals(1, metadata.textSlotCount)
+        assertTrue(TemplateFeatureType.TRACK_TYPE to TrackType.VIDEO.name in featureKeys)
+        assertTrue(TemplateFeatureType.EFFECT to EffectType.TRACKED_MOSAIC.name in featureKeys)
+        assertTrue(TemplateFeatureType.TRACKED_MOSAIC to EffectType.TRACKED_MOSAIC.name in featureKeys)
+        assertTrue(TemplateFeatureType.TRANSITION to TransitionType.DISSOLVE.name in featureKeys)
+        assertTrue(TemplateFeatureType.AUDIO_EFFECT to AudioEffectType.COMPRESSOR.name in featureKeys)
+        assertTrue(TemplateFeatureType.TEXT_OVERLAY to "TEXT_OVERLAY" in featureKeys)
+        assertTrue(TemplateFeatureType.TRACKED_OBJECT to "TRACKED_OBJECT" in featureKeys)
+    }
+
+    @Test
+    fun validate_blocksFutureSchemaAndAppVersion() {
+        val report = TemplateCompatibilityEngine.validate(
+            metadata = TemplateCompatibilityMetadata(
+                schemaVersion = 99,
+                minVersionCode = 10_000,
+                minVersionName = "9.0.0"
+            ),
+            currentSchemaVersion = 1,
+            currentVersionCode = 132
+        )
+
+        assertFalse(report.canImport)
+        assertEquals(TemplateCompatibilityStatus.BLOCKED, report.status)
+        assertTrue(report.issues.any { it.code == "future_schema" })
+        assertTrue(report.issues.any { it.code == "future_app_version" })
+    }
+
+    @Test
+    fun validate_blocksUnknownRequiredFeatures() {
+        val json = JSONObject().apply {
+            put("schemaVersion", 1)
+            put("minAppVersionCode", 1)
+            put("minAppVersionName", "3.8.0")
+            put("features", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("type", "FUTURE_AI_TOOL")
+                    put("key", "FUTURE_AI_TOOL")
+                    put("displayName", "Future AI tool")
+                    put("required", true)
+                })
+            })
+        }
+
+        val metadata = TemplateCompatibilityEngine.fromJson(json)!!
+        val report = TemplateCompatibilityEngine.validate(
+            metadata = metadata,
+            currentSchemaVersion = 1,
+            currentVersionCode = 132
+        )
+
+        assertEquals(TemplateFeatureType.UNKNOWN, metadata.features.single().type)
+        assertFalse(report.canImport)
+        assertEquals(TemplateCompatibilityStatus.BLOCKED, report.status)
+        assertTrue(report.issues.any { it.code == "unsupported_feature" })
+    }
+
+    @Test
+    fun jsonRoundTrip_preservesMetadata() {
+        val metadata = TemplateCompatibilityMetadata(
+            schemaVersion = 1,
+            minVersionCode = 132,
+            minVersionName = "3.71.0",
+            features = listOf(
+                TemplateFeatureRequirement(
+                    type = TemplateFeatureType.EFFECT,
+                    key = EffectType.GAUSSIAN_BLUR.name,
+                    displayName = EffectType.GAUSSIAN_BLUR.displayName
+                ),
+                TemplateFeatureRequirement(
+                    type = TemplateFeatureType.TEXT_OVERLAY,
+                    key = "TEXT_OVERLAY",
+                    displayName = "Text overlays"
+                )
+            ),
+            slotCount = 3,
+            mediaSlotCount = 2,
+            textSlotCount = 1
+        )
+
+        val restored = TemplateCompatibilityEngine.fromJson(
+            TemplateCompatibilityEngine.toJson(metadata)
+        )
+
+        assertEquals(metadata, restored)
+    }
+
+    @Test
+    fun fromJson_blocksPathologicalFeatureLists() {
+        val json = JSONObject().apply {
+            put("schemaVersion", 1)
+            put("features", JSONArray().apply {
+                repeat(300) { index ->
+                    put(JSONObject().apply {
+                        put("type", "EFFECT")
+                        put("key", "CUSTOM_$index")
+                        put("displayName", "Custom $index")
+                        put("required", false)
+                    })
+                }
+            })
+        }
+
+        val metadata = TemplateCompatibilityEngine.fromJson(json)!!
+        val report = TemplateCompatibilityEngine.validate(metadata)
+
+        assertTrue(metadata.features.any {
+            it.type == TemplateFeatureType.UNKNOWN && it.key == "FEATURE_LIMIT_EXCEEDED"
+        })
+        assertFalse(report.canImport)
+        assertEquals(TemplateCompatibilityStatus.BLOCKED, report.status)
+    }
+
+    @Test
+    fun fromJson_boundsUntrustedMetadataText() {
+        val longText = "x".repeat(500)
+        val json = JSONObject().apply {
+            put("minAppVersionName", longText)
+            put("slotCount", Int.MAX_VALUE)
+            put("features", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("type", "EFFECT")
+                    put("key", longText)
+                    put("displayName", "Name\n$longText")
+                })
+            })
+        }
+
+        val metadata = TemplateCompatibilityEngine.fromJson(json)!!
+        val feature = metadata.features.single()
+
+        assertTrue(metadata.minVersionName.length <= 40)
+        assertEquals(100_000, metadata.slotCount)
+        assertTrue(feature.key.length <= 120)
+        assertTrue(feature.displayName.length <= 160)
+        assertFalse(feature.displayName.contains("\n"))
+    }
+}

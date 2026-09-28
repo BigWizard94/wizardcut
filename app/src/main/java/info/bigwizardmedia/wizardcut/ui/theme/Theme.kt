@@ -1,0 +1,408 @@
+package info.bigwizardmedia.wizardcut.ui.theme
+
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import info.bigwizardmedia.wizardcut.engine.AppearanceMode
+
+// Catppuccin Mocha palette
+object Mocha {
+    // Neutral creator-workspace layers. Catppuccin accents remain available for media
+    // semantics, while persistent chrome stays graphite so footage remains the focal point.
+    val Midnight = Color(0xFF020405)
+    val Crust = Color(0xFF05090C)
+    val Mantle = Color(0xFF070C11)
+    val Base = Color(0xFF0A1117)
+    val Panel = Color(0xFF070C10)
+    val PanelRaised = Color(0xFF0C131A)
+    val PanelHighest = Color(0xFF111A22)
+    val CardStroke = Color(0xFF1D2933)
+    val CardStrokeStrong = Color(0xFF31404B)
+    val Glow = Color(0x66CBA6F7)
+    val GlowSoft = Color(0x3389B4FA)
+    val GlowWarm = Color(0x33F5E0DC)
+    val Surface0 = Color(0xFF17212A)
+    val Surface1 = Color(0xFF25323D)
+    val Surface2 = Color(0xFF3C4A56)
+    val Overlay0 = Color(0xFF596470)
+    val Overlay1 = Color(0xFF788390)
+    val Overlay2 = Color(0xFF929CA8)
+    val Subtext0 = Color(0xFF87919F)
+    val Subtext1 = Color(0xFFAFB7C3)
+    val Text = Color(0xFFF4F7FA)
+    val Lavender = Color(0xFFB4BEFE)
+    val Blue = Color(0xFF89B4FA)
+    val Sapphire = Color(0xFF52C8F0)
+    val Sky = Color(0xFF35D5E8)
+    val Teal = Color(0xFF54D6C6)
+    val Green = Color(0xFF91E68F)
+    val Yellow = Color(0xFFF9E2AF)
+    val Peach = Color(0xFFFF7F6E)
+    val Maroon = Color(0xFFEBA0AC)
+    val Red = Color(0xFFF38BA8)
+    val Mauve = Color(0xFFC27CFF)
+    val Pink = Color(0xFFF5C2E7)
+    val Flamingo = Color(0xFFF2CDCD)
+    val Rosewater = Color(0xFFF5E0DC)
+    // WizardCut brand accents: deep purple primary + teal secondary.
+    val Wizard = Color(0xFFA855F7)
+    val WizardDeep = Color(0xFF7C3AED)
+}
+
+/**
+ * Stable media/category accents. Feature surfaces may use these to preserve
+ * identity, but structural chrome and readable content must use
+ * [LocalClearCutColors] so High Contrast Dark can strengthen them.
+ */
+object ClearCutAccents {
+    /** Stable neutral accent for content that is defined outside composition. */
+    val Neutral = Mocha.Subtext0
+    val Lavender = Mocha.Lavender
+    val Blue = Mocha.Blue
+    val Sapphire = Mocha.Sapphire
+    val Sky = Mocha.Sky
+    val Teal = Mocha.Teal
+    val Green = Mocha.Green
+    val Yellow = Mocha.Yellow
+    val Peach = Mocha.Peach
+    val Maroon = Mocha.Maroon
+    val Red = Mocha.Red
+    val Mauve = Mocha.Mauve
+    val Pink = Mocha.Pink
+    val Flamingo = Mocha.Flamingo
+    val Rosewater = Mocha.Rosewater
+}
+
+private val ClearCutDarkColorScheme = darkColorScheme(
+    primary = Mocha.Wizard,
+    onPrimary = Mocha.Crust,
+    primaryContainer = Mocha.Wizard.copy(alpha = 0.18f),
+    onPrimaryContainer = Mocha.Wizard,
+    secondary = Mocha.Teal,
+    onSecondary = Mocha.Crust,
+    secondaryContainer = Mocha.Teal.copy(alpha = 0.16f),
+    onSecondaryContainer = Mocha.Teal,
+    tertiary = Mocha.Mauve,
+    onTertiary = Mocha.Crust,
+    tertiaryContainer = Mocha.Mauve.copy(alpha = 0.16f),
+    onTertiaryContainer = Mocha.Mauve,
+    error = Mocha.Red,
+    onError = Mocha.Crust,
+    errorContainer = Mocha.Red.copy(alpha = 0.3f),
+    onErrorContainer = Mocha.Red,
+    background = Mocha.Midnight,
+    onBackground = Mocha.Text,
+    surface = Mocha.Panel,
+    onSurface = Mocha.Text,
+    surfaceVariant = Mocha.PanelRaised,
+    onSurfaceVariant = Mocha.Subtext1,
+    outline = Mocha.CardStrokeStrong,
+    outlineVariant = Mocha.CardStroke,
+    inverseSurface = Mocha.Text,
+    inverseOnSurface = Mocha.Base,
+    inversePrimary = Mocha.WizardDeep,
+    surfaceDim = Mocha.Crust,
+    surfaceBright = Mocha.PanelHighest,
+    surfaceContainerLowest = Mocha.Midnight,
+    surfaceContainerLow = Mocha.Panel,
+    surfaceContainer = Mocha.Mantle,
+    surfaceContainerHigh = Mocha.PanelRaised,
+    surfaceContainerHighest = Mocha.PanelHighest
+)
+
+private val ClearCutHighContrastColorScheme = darkColorScheme(
+    primary = Mocha.Wizard,
+    onPrimary = Mocha.Crust,
+    primaryContainer = Mocha.Wizard,
+    onPrimaryContainer = Mocha.Crust,
+    secondary = Mocha.Teal,
+    onSecondary = Mocha.Crust,
+    secondaryContainer = Mocha.Teal,
+    onSecondaryContainer = Mocha.Crust,
+    tertiary = Mocha.Mauve,
+    onTertiary = Mocha.Crust,
+    tertiaryContainer = Mocha.Mauve,
+    onTertiaryContainer = Mocha.Crust,
+    error = Mocha.Red,
+    onError = Mocha.Crust,
+    errorContainer = Mocha.Red,
+    onErrorContainer = Mocha.Crust,
+    background = Color(0xFF05070D),
+    onBackground = Color(0xFFFFFFFF),
+    surface = Color(0xFF070A12),
+    onSurface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFF111827),
+    onSurfaceVariant = Color(0xFFF4F7FF),
+    outline = Color(0xFFF4F7FF),
+    outlineVariant = Color(0xFFBAC2DE),
+    inverseSurface = Color(0xFFFFFFFF),
+    inverseOnSurface = Color(0xFF05070D),
+    inversePrimary = Mocha.Wizard,
+    surfaceDim = Color(0xFF05070D),
+    surfaceBright = Color(0xFF172033),
+    surfaceContainerLowest = Color(0xFF05070D),
+    surfaceContainerLow = Color(0xFF070A12),
+    surfaceContainer = Color(0xFF0C111D),
+    surfaceContainerHigh = Color(0xFF111827),
+    surfaceContainerHighest = Color(0xFF172033)
+)
+
+data class ClearCutSemanticColors(
+    val mode: AppearanceMode,
+    val highContrast: Boolean,
+    val background: Color,
+    val backgroundMid: Color,
+    val panel: Color,
+    val panelRaised: Color,
+    val panelHighest: Color,
+    val cardStroke: Color,
+    val cardStrokeStrong: Color,
+    val text: Color,
+    val subtext: Color,
+    val subtextStrong: Color,
+    val disabledText: Color,
+    val accent: Color,
+    val accentSecondary: Color,
+    val success: Color,
+    val warning: Color,
+    val danger: Color,
+    val focusRing: Color,
+    val canvas: Color,
+    val selectedSurface: Color,
+    val disabledSurface: Color,
+    val surfaceBase: Color,
+    val surfaceLow: Color,
+    val surface: Color,
+    val surfaceHigh: Color,
+    val overlay: Color,
+    val overlayStrong: Color,
+    val onAccent: Color,
+)
+
+val LocalClearCutColors = staticCompositionLocalOf {
+    ClearCutThemeDefaults.colorsFor(AppearanceMode.DARK)
+}
+
+object ClearCutThemeDefaults {
+    /**
+     * ClearCut intentionally ships dark schemes only. Each selectable appearance mode
+     * resolves to its own implemented scheme; there is no unsupported system-following
+     * or light-mode branch hidden behind the settings control.
+     */
+    fun resolveMode(mode: AppearanceMode): AppearanceMode = mode
+
+    fun colorSchemeFor(resolvedMode: AppearanceMode) = when (resolvedMode) {
+        AppearanceMode.HIGH_CONTRAST_DARK -> ClearCutHighContrastColorScheme
+        AppearanceMode.DARK -> ClearCutDarkColorScheme
+    }
+
+    fun colorsFor(resolvedMode: AppearanceMode): ClearCutSemanticColors = when (resolvedMode) {
+        AppearanceMode.HIGH_CONTRAST_DARK -> ClearCutSemanticColors(
+            mode = resolvedMode,
+            highContrast = true,
+            background = Color(0xFF05070D),
+            backgroundMid = Color(0xFF070A12),
+            panel = Color(0xFF070A12),
+            panelRaised = Color(0xFF0C111D),
+            panelHighest = Color(0xFF172033),
+            cardStroke = Color(0xFFBAC2DE),
+            cardStrokeStrong = Color(0xFFF4F7FF),
+            text = Color(0xFFFFFFFF),
+            subtext = Color(0xFFF4F7FF),
+            subtextStrong = Color(0xFFFFFFFF),
+            disabledText = Color(0xFFBAC2DE),
+            accent = Mocha.Sky,
+            accentSecondary = Mocha.Peach,
+            success = Mocha.Green,
+            warning = Mocha.Peach,
+            danger = Mocha.Red,
+            focusRing = Color(0xFFFFFFFF),
+            canvas = Color(0xFF000000),
+            selectedSurface = Mocha.Sky,
+            disabledSurface = Color(0xFF111827),
+            surfaceBase = Color(0xFF0C111D),
+            surfaceLow = Color(0xFF172033),
+            surface = Color(0xFF24324A),
+            surfaceHigh = Color(0xFF24324A),
+            overlay = Color(0xFFBAC2DE),
+            overlayStrong = Color(0xFFF4F7FF),
+            onAccent = Color(0xFF05070D),
+        )
+        AppearanceMode.DARK -> ClearCutSemanticColors(
+            mode = AppearanceMode.DARK,
+            highContrast = false,
+            background = Mocha.Midnight,
+            backgroundMid = Mocha.Mantle,
+            panel = Mocha.Panel,
+            panelRaised = Mocha.PanelRaised,
+            panelHighest = Mocha.PanelHighest,
+            cardStroke = Mocha.CardStroke,
+            cardStrokeStrong = Mocha.CardStrokeStrong,
+            text = Mocha.Text,
+            subtext = Mocha.Subtext0,
+            subtextStrong = Mocha.Subtext1,
+            disabledText = Mocha.Subtext0,
+            accent = Mocha.Sky,
+            accentSecondary = Mocha.Peach,
+            success = Mocha.Green,
+            warning = Mocha.Peach,
+            danger = Mocha.Red,
+            focusRing = Mocha.Sky,
+            canvas = Color(0xFF000000),
+            selectedSurface = Mocha.Sky.copy(alpha = 0.14f),
+            disabledSurface = Mocha.PanelHighest.copy(alpha = 0.48f),
+            surfaceBase = Mocha.Base,
+            surfaceLow = Mocha.Surface0,
+            surface = Mocha.Surface1,
+            surfaceHigh = Mocha.Surface2,
+            overlay = Mocha.Overlay0,
+            overlayStrong = Mocha.Overlay1,
+            onAccent = Mocha.Crust,
+        )
+    }
+
+    fun contrastRatio(foreground: Color, background: Color): Double {
+        val fg = relativeLuminance(foreground)
+        val bg = relativeLuminance(background)
+        val lighter = maxOf(fg, bg)
+        val darker = minOf(fg, bg)
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    private fun relativeLuminance(color: Color): Double {
+        val r = linearizedChannel(color.red)
+        val g = linearizedChannel(color.green)
+        val b = linearizedChannel(color.blue)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+
+    private fun linearizedChannel(channel: Float): Double {
+        val srgb = channel.toDouble()
+        return if (srgb <= 0.03928) {
+            srgb / 12.92
+        } else {
+            Math.pow((srgb + 0.055) / 1.055, 2.4)
+        }
+    }
+}
+
+private val ClearCutFontFamily = FontFamily.SansSerif
+
+private val ClearCutTypography = Typography(
+    displayLarge = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 36.sp,
+        lineHeight = 40.sp,
+        letterSpacing = 0.sp
+    ),
+    displayMedium = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 30.sp,
+        lineHeight = 34.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 24.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 24.sp
+    ),
+    titleLarge = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 18.sp,
+        lineHeight = 22.sp
+    ),
+    titleMedium = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    titleSmall = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 15.sp,
+        lineHeight = 21.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp
+    ),
+    bodySmall = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 17.sp
+    ),
+    labelLarge = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
+        lineHeight = 16.sp
+    ),
+    labelMedium = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 14.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = ClearCutFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 13.sp,
+        letterSpacing = 0.2.sp
+    )
+)
+
+private val ClearCutShapes = Shapes(
+    extraSmall = RoundedCornerShape(Radius.xs),
+    small = RoundedCornerShape(Radius.sm),
+    medium = RoundedCornerShape(Radius.md),
+    large = RoundedCornerShape(Radius.xl),
+    extraLarge = RoundedCornerShape(Radius.xxl),
+)
+
+@Composable
+fun ClearCutTheme(
+    appearanceMode: AppearanceMode = AppearanceMode.DARK,
+    content: @Composable () -> Unit
+) {
+    val resolvedMode = ClearCutThemeDefaults.resolveMode(appearanceMode)
+    CompositionLocalProvider(LocalClearCutColors provides ClearCutThemeDefaults.colorsFor(resolvedMode)) {
+        MaterialTheme(
+            colorScheme = ClearCutThemeDefaults.colorSchemeFor(resolvedMode),
+            typography = ClearCutTypography,
+            shapes = ClearCutShapes,
+            content = content
+        )
+    }
+}
